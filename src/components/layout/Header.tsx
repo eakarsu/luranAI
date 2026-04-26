@@ -32,12 +32,13 @@ export default function Header() {
 
   const handleLogout = async () => {
     try {
+      // The token cookie is httpOnly, so only the server can clear it.
       await fetch('/api/auth/logout', { method: 'POST' })
     } catch {
-      // Continue with logout even if API call fails
+      // Continue with the redirect even if the API call fails
     }
-    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
     router.push('/login')
+    router.refresh()
   }
 
   return (

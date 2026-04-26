@@ -1,10 +1,13 @@
 // Workflow Executor - processes each conversation turn through the workflow graph
-// Called by the gather webhook when a workflow is attached to a call
+// Called by the gather webhook (voice) and the chat-response API (chat) when a
+// workflow is attached to the session.
 
 import type { WorkflowState } from './call-state'
-import { getNextNode, evaluateCondition, buildNodePrompt } from './workflow-engine'
+import { getNextNode, buildNodePrompt } from './workflow-engine'
 import type { WorkflowNode, WorkflowEdge } from './workflow-engine'
-import { generateCallResponse } from './openrouter'
+import { generateCallResponse, generateChatTurnResponse } from './openrouter'
+
+export type Channel = 'voice' | 'chat'
 
 interface ExecutionResult {
   response: string
@@ -12,6 +15,24 @@ interface ExecutionResult {
   shouldTransfer: boolean
   transferNumber?: string
   updatedWorkflow: WorkflowState
+}
+
+// Channel-aware LLM call. Voice = spoken-tuned, chat = readable-tuned.
+async function generateTurnResponse(
+  channel: Channel,
+  prompt: string,
+  conversationHistory: { role: 'user' | 'assistant'; content: string }[]
+): Promise<string> {
+  return channel === 'chat'
+    ? generateChatTurnResponse(prompt, conversationHistory.slice(-12))
+    : generateCallResponse(prompt, conversationHistory.slice(-10))
+}
+
+// Channel-specific suffix appended to per-node prompts.
+function turnResponseSuffix(channel: Channel): string {
+  return channel === 'chat'
+    ? 'Respond conversationally in 1-3 short sentences or a brief paragraph. Plain text only — no markdown.'
+    : 'Respond in 1-2 natural spoken sentences. Do NOT use lists, bullet points, or markdown. This is a phone call.'
 }
 
 // Build an ExecutionContext compatible with workflow-engine functions
@@ -26,12 +47,14 @@ function buildContext(workflow: WorkflowState, conversationHistory: { role: stri
   }
 }
 
-// Process the current node and advance the workflow
+// Process the current node and advance the workflow.
+// `channel` defaults to 'voice' to preserve the existing voice webhook behavior.
 export async function executeWorkflowTurn(
   workflow: WorkflowState,
   userInput: string,
   systemPrompt: string,
-  conversationHistory: { role: 'user' | 'assistant'; content: string }[]
+  conversationHistory: { role: 'user' | 'assistant'; content: string }[],
+  channel: Channel = 'voice'
 ): Promise<ExecutionResult> {
   const nodes = workflow.nodes as WorkflowNode[]
   const edges = workflow.edges as WorkflowEdge[]
@@ -40,8 +63,14 @@ export async function executeWorkflowTurn(
   // Find current node
   let currentNode = nodes.find(n => n.id === workflow.currentNodeId)
 
-  // If we're on trigger or play_message, advance to the next actionable node
+  // If we're on trigger or play_message, advance to the next actionable node.
+  // For chat, capture the play_message text so the user sees it prepended to the next reply.
+  let pendingPlayMessage: string | null = null
   if (currentNode && (currentNode.type === 'trigger' || currentNode.type === 'play_message')) {
+    if (channel === 'chat' && currentNode.type === 'play_message') {
+      const msg = substituteVars(currentNode.config.message as string | undefined, workflow)
+      if (msg) pendingPlayMessage = msg
+    }
     const nextId = getNextNode(currentNode.id, edges, context)
     if (nextId) {
       currentNode = nodes.find(n => n.id === nextId)
@@ -51,9 +80,9 @@ export async function executeWorkflowTurn(
 
   if (!currentNode) {
     // Fallback to freeform if workflow state is broken
-    const response = await generateCallResponse(systemPrompt, conversationHistory.slice(-10))
+    const response = await generateTurnResponse(channel, systemPrompt, conversationHistory)
     return {
-      response,
+      response: pendingPlayMessage ? `${pendingPlayMessage}\n\n${response}` : response,
       shouldHangup: false,
       shouldTransfer: false,
       updatedWorkflow: workflow,
@@ -69,13 +98,12 @@ export async function executeWorkflowTurn(
   switch (currentNode.type) {
     case 'ai_response': {
       const nodePrompt = buildNodePrompt(currentNode, context)
-      const fullPrompt = `${systemPrompt}\n\nCURRENT TASK: ${nodePrompt}\n\nIMPORTANT: Respond in 1-2 natural spoken sentences. Do NOT use lists, bullet points, or markdown. This is a phone call.`
-      response = await generateCallResponse(fullPrompt, conversationHistory.slice(-10))
+      const fullPrompt = `${systemPrompt}\n\nCURRENT TASK: ${nodePrompt}\n\nIMPORTANT: ${turnResponseSuffix(channel)}`
+      response = await generateTurnResponse(channel, fullPrompt, conversationHistory)
 
       // If the node sets a variable, use AI to extract it
       if (currentNode.config.setVariable) {
         const varName = currentNode.config.setVariable as string
-        // Use the user's input to determine the variable value
         workflow.variables[varName] = extractVariable(userInput, varName)
       }
 
@@ -87,6 +115,7 @@ export async function executeWorkflowTurn(
 
     case 'collect_info': {
       const fields = (currentNode.config.fields as string[]) || []
+      const questions = (currentNode.config.questions as string[]) || []
       const nodePrompt = buildNodePrompt(currentNode, context)
 
       // Check if user's response contains info we need
@@ -96,17 +125,31 @@ export async function executeWorkflowTurn(
         // Try to extract info from user input
         extractInfoFromInput(userInput, uncollected, workflow.collectedInfo)
 
-        // Check what's still missing
-        const stillMissing = fields.filter(f => !workflow.collectedInfo[f])
+        // Check what's still missing — ask for the FIRST unfilled field, in order
+        const nextFieldIdx = fields.findIndex(f => !workflow.collectedInfo[f])
 
-        if (stillMissing.length > 0 && workflow.currentNodeId === currentNode.id) {
-          // Still need more info — ask for it
+        if (nextFieldIdx >= 0 && workflow.currentNodeId === currentNode.id) {
+          // Per-field question takes precedence (deterministic, single-question flow)
+          const targetedQuestion = questions[nextFieldIdx]
+
+          if (targetedQuestion) {
+            const hasPriorAnswers = Object.values(workflow.collectedInfo).some(v => !!v)
+            const ackInstruction = hasPriorAnswers
+              ? 'Briefly acknowledge what the user just said in one short clause (e.g., "Got it" or echoing the value). Then ask the question.'
+              : 'Ask the question warmly.'
+            const prompt = `${systemPrompt}\n\nCURRENT TASK: Ask the user this single question. Do NOT ask anything else, do NOT batch multiple questions.\n\nQUESTION TO ASK: "${targetedQuestion}"\n\n${ackInstruction}\n\n${turnResponseSuffix(channel)}`
+            response = await generateTurnResponse(channel, prompt, conversationHistory)
+            break
+          }
+
+          // Fallback for nodes without a questions array — original bundled prompt logic
+          const stillMissing = fields.filter(f => !workflow.collectedInfo[f])
           const collectedSummary = Object.entries(workflow.collectedInfo)
             .filter(([, v]) => v)
             .map(([k, v]) => `${k}: ${v}`)
             .join(', ')
-          const prompt = `${systemPrompt}\n\nCURRENT TASK: ${nodePrompt}\n\nAlready collected: ${collectedSummary || 'nothing yet'}\nStill need: ${stillMissing.join(', ')}\n\nAsk the caller for the missing information naturally. Ask ONE question at a time. Keep it conversational.`
-          response = await generateCallResponse(prompt, conversationHistory.slice(-10))
+          const prompt = `${systemPrompt}\n\nCURRENT TASK: ${nodePrompt}\n\nAlready collected: ${collectedSummary || 'nothing yet'}\nStill need: ${stillMissing.join(', ')}\n\nAsk for the missing information naturally. Ask ONE question at a time. ${turnResponseSuffix(channel)}`
+          response = await generateTurnResponse(channel, prompt, conversationHistory)
           // Stay on this node
           break
         }
@@ -119,12 +162,17 @@ export async function executeWorkflowTurn(
         // Process the next node immediately if it's not another collect/ai node
         const nextNode = nodes.find(n => n.id === nextId)
         if (nextNode && (nextNode.type === 'condition' || nextNode.type === 'book_appointment' || nextNode.type === 'create_contact' || nextNode.type === 'send_sms')) {
-          return executeWorkflowTurn(workflow, userInput, systemPrompt, conversationHistory)
+          const nested = await executeWorkflowTurn(workflow, userInput, systemPrompt, conversationHistory, channel)
+          // Prepend any pending play_message text we captured before this branch
+          if (pendingPlayMessage) {
+            nested.response = `${pendingPlayMessage}\n\n${nested.response}`
+          }
+          return nested
         }
         // For ai_response or collect_info, generate response for the new node
         const newNodePrompt = nextNode ? buildNodePrompt(nextNode, context) : ''
-        const prompt = `${systemPrompt}\n\nCURRENT TASK: ${newNodePrompt}\n\nRespond naturally in 1-2 spoken sentences.`
-        response = await generateCallResponse(prompt, conversationHistory.slice(-10))
+        const prompt = `${systemPrompt}\n\nCURRENT TASK: ${newNodePrompt}\n\n${turnResponseSuffix(channel)}`
+        response = await generateTurnResponse(channel, prompt, conversationHistory)
       } else {
         response = "Thank you! I have all the information I need."
       }
@@ -137,15 +185,21 @@ export async function executeWorkflowTurn(
       if (nextId) {
         workflow.currentNodeId = nextId
         // Process the next node
-        return executeWorkflowTurn(workflow, userInput, systemPrompt, conversationHistory)
+        const nested = await executeWorkflowTurn(workflow, userInput, systemPrompt, conversationHistory, channel)
+        if (pendingPlayMessage) {
+          nested.response = `${pendingPlayMessage}\n\n${nested.response}`
+        }
+        return nested
       }
       // No matching condition — use default prompt
-      response = await generateCallResponse(systemPrompt, conversationHistory.slice(-10))
+      response = await generateTurnResponse(channel, systemPrompt, conversationHistory)
       break
     }
 
     case 'escalate': {
-      response = (currentNode.config.message as string) || "Let me connect you with someone who can better help you. Please hold."
+      response = (currentNode.config.message as string) || (channel === 'chat'
+        ? "Let me connect you with someone who can better help you. A human agent will follow up shortly."
+        : "Let me connect you with someone who can better help you. Please hold.")
       shouldTransfer = true
       const nextId = getNextNode(currentNode.id, edges, context)
       if (nextId) workflow.currentNodeId = nextId
@@ -153,16 +207,21 @@ export async function executeWorkflowTurn(
     }
 
     case 'transfer_call': {
-      response = (currentNode.config.message as string) || "I'm transferring you now. Please hold."
+      // For chat, "transfer" becomes an escalation message (no telephony transfer possible).
+      response = (currentNode.config.message as string) || (channel === 'chat'
+        ? "I'll have a team member reach out to you directly to help with this."
+        : "I'm transferring you now. Please hold.")
       shouldTransfer = true
-      transferNumber = currentNode.config.transferNumber as string
+      transferNumber = channel === 'voice' ? (currentNode.config.transferNumber as string) : undefined
       const nextId = getNextNode(currentNode.id, edges, context)
       if (nextId) workflow.currentNodeId = nextId
       break
     }
 
     case 'end_call': {
-      response = (currentNode.config.message as string) || "Thank you for calling! Have a great day. Goodbye!"
+      response = (currentNode.config.message as string) || (channel === 'chat'
+        ? "Thanks for chatting! Feel free to reach out anytime."
+        : "Thank you for calling! Have a great day. Goodbye!")
       shouldHangup = true
       break
     }
@@ -174,9 +233,15 @@ export async function executeWorkflowTurn(
       const nextId = getNextNode(currentNode.id, edges, context)
       if (nextId) {
         workflow.currentNodeId = nextId
-        return executeWorkflowTurn(workflow, userInput, systemPrompt, conversationHistory)
+        const nested = await executeWorkflowTurn(workflow, userInput, systemPrompt, conversationHistory, channel)
+        if (pendingPlayMessage) {
+          nested.response = `${pendingPlayMessage}\n\n${nested.response}`
+        }
+        return nested
       }
-      response = "I've sent you a confirmation message."
+      response = channel === 'chat'
+        ? "I've queued a confirmation message to send to you."
+        : "I've sent you a confirmation message."
       break
     }
 
@@ -185,7 +250,11 @@ export async function executeWorkflowTurn(
       const nextId = getNextNode(currentNode.id, edges, context)
       if (nextId) {
         workflow.currentNodeId = nextId
-        return executeWorkflowTurn(workflow, userInput, systemPrompt, conversationHistory)
+        const nested = await executeWorkflowTurn(workflow, userInput, systemPrompt, conversationHistory, channel)
+        if (pendingPlayMessage) {
+          nested.response = `${pendingPlayMessage}\n\n${nested.response}`
+        }
+        return nested
       }
       response = "Your appointment has been booked!"
       break
@@ -200,18 +269,27 @@ export async function executeWorkflowTurn(
       const nextId = getNextNode(currentNode.id, edges, context)
       if (nextId) {
         workflow.currentNodeId = nextId
-        return executeWorkflowTurn(workflow, userInput, systemPrompt, conversationHistory)
+        const nested = await executeWorkflowTurn(workflow, userInput, systemPrompt, conversationHistory, channel)
+        if (pendingPlayMessage) {
+          nested.response = `${pendingPlayMessage}\n\n${nested.response}`
+        }
+        return nested
       }
-      response = await generateCallResponse(systemPrompt, conversationHistory.slice(-10))
+      response = await generateTurnResponse(channel, systemPrompt, conversationHistory)
       break
     }
 
     default: {
       // Unknown node type — fallback to freeform
-      response = await generateCallResponse(systemPrompt, conversationHistory.slice(-10))
+      response = await generateTurnResponse(channel, systemPrompt, conversationHistory)
       const nextId = getNextNode(currentNode.id, edges, context)
       if (nextId) workflow.currentNodeId = nextId
     }
+  }
+
+  // If we captured a play_message earlier, prepend it (chat only).
+  if (pendingPlayMessage && response) {
+    response = `${pendingPlayMessage}\n\n${response}`
   }
 
   return {
@@ -259,8 +337,6 @@ function extractInfoFromInput(input: string, fields: string[], collected: Record
 
   for (const field of fields) {
     if (collected[field]) continue
-
-    const fieldLower = field.toLowerCase().replace(/_/g, ' ')
 
     // Name extraction
     if (field.match(/name|full.?name|caller.?name|guest.?name/i)) {

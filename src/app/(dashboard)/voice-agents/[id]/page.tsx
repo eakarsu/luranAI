@@ -4,26 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import StatusBadge from '@/components/ui/StatusBadge'
 import { getIndustryConfig, type IndustryConfig } from '@/lib/industry-config'
-
-const INDUSTRY_EMOJIS: Record<string, string> = {
-  dentistry: '\u{1F9B7}',
-  restaurants: '\u{1F37D}',
-  'health clinics': '\u{1F3E5}',
-  'real estate': '\u{1F3E0}',
-  'car dealerships': '\u{1F697}',
-  hospitality: '\u{1F3E8}',
-  'debt collection': '\u{1F4B0}',
-  insurance: '\u{1F6E1}',
-  legal: '\u{2696}',
-  'home services': '\u{1F527}',
-  pharmacy: '\u{1F48A}',
-  fitness: '\u{1F4AA}',
-  education: '\u{1F393}',
-  'pet care': '\u{1F43E}',
-  accounting: '\u{1F4CA}',
-  salon: '\u{1F487}',
-  'auto repair': '\u{1F6E0}',
-}
+import { getIndustryEmoji } from '@/lib/industry-display'
 
 interface WorkflowNode {
   id: string
@@ -229,7 +210,7 @@ export default function VoiceAgentDetailPage() {
     )
   }
 
-  const emoji = INDUSTRY_EMOJIS[industry.id] || '\u{1F4BC}'
+  const emoji = getIndustryEmoji(industry.id)
 
   return (
     <div className="p-6">

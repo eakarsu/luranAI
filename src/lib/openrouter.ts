@@ -151,3 +151,28 @@ CRITICAL RULES FOR PHONE CONVERSATION:
     return "I apologize, I'm having a technical issue. Would you like me to have someone call you back?"
   }
 }
+
+// Multi-turn chat conversation — chat-tuned variant of generateCallResponse.
+// Same role (driving a workflow turn or freeform reply) but allows short
+// paragraphs since the user can read instead of listen.
+export async function generateChatTurnResponse(
+  systemPrompt: string,
+  conversationHistory: { role: 'user' | 'assistant'; content: string }[]
+): Promise<string> {
+  try {
+    return await callOpenRouter([
+      { role: 'system', content: `${systemPrompt}
+
+CRITICAL RULES FOR CHAT CONVERSATION:
+- Respond in 1-3 short sentences or a brief paragraph — keep it concise but readable
+- Plain text only — no markdown, headings, or bullet lists
+- Acknowledge what the user said before answering
+- Ask one question at a time when collecting information
+- If you detect an escalation trigger (emergency, complaint, legal), suggest connecting with a human agent` },
+      ...conversationHistory.slice(-12),
+    ], 400, 0.7)
+  } catch (error) {
+    console.error('generateChatTurnResponse error:', error)
+    return "I apologize, I'm having a technical issue. Could you try sending that again?"
+  }
+}

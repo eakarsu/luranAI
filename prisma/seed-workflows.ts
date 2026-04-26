@@ -26,6 +26,7 @@ async function main() {
         data: {
           description: wf.description,
           trigger: wf.trigger,
+          channels: JSON.stringify(['VOICE', 'CHAT']),
           nodes: JSON.parse(JSON.stringify(wf.nodes)),
           edges: JSON.parse(JSON.stringify(wf.edges)),
           status: 'active',
@@ -40,7 +41,7 @@ async function main() {
           description: wf.description,
           trigger: wf.trigger,
           industry: wf.industry,
-          channels: JSON.stringify(['VOICE']),
+          channels: JSON.stringify(['VOICE', 'CHAT']),
           nodes: JSON.parse(JSON.stringify(wf.nodes)),
           edges: JSON.parse(JSON.stringify(wf.edges)),
           variables: JSON.stringify({}),

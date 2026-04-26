@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { getAllIndustries } from '@/lib/industry-config'
+import { getAllIndustries, getIndustryConfig } from '@/lib/industry-config'
+import { getIndustryEmoji, getIndustryColorClass } from '@/lib/industry-display'
 
 interface VoiceAgent {
   id: string
@@ -20,50 +21,11 @@ interface Workflow {
   edges: unknown[]
 }
 
-const INDUSTRY_EMOJIS: Record<string, string> = {
-  dentistry: '\u{1F9B7}',
-  restaurants: '\u{1F37D}',
-  'health clinics': '\u{1F3E5}',
-  'real estate': '\u{1F3E0}',
-  'car dealerships': '\u{1F697}',
-  hospitality: '\u{1F3E8}',
-  'debt collection': '\u{1F4B0}',
-  insurance: '\u{1F6E1}',
-  legal: '\u{2696}',
-  'home services': '\u{1F527}',
-  pharmacy: '\u{1F48A}',
-  fitness: '\u{1F4AA}',
-  education: '\u{1F393}',
-  'pet care': '\u{1F43E}',
-  accounting: '\u{1F4CA}',
-  salon: '\u{1F487}',
-  'auto repair': '\u{1F6E0}',
-}
-
-const INDUSTRY_COLORS: Record<string, string> = {
-  dentistry: 'border-blue-300 hover:border-blue-500 hover:bg-blue-50',
-  restaurants: 'border-orange-300 hover:border-orange-500 hover:bg-orange-50',
-  'health clinics': 'border-green-300 hover:border-green-500 hover:bg-green-50',
-  'real estate': 'border-purple-300 hover:border-purple-500 hover:bg-purple-50',
-  'car dealerships': 'border-red-300 hover:border-red-500 hover:bg-red-50',
-  hospitality: 'border-cyan-300 hover:border-cyan-500 hover:bg-cyan-50',
-  'debt collection': 'border-gray-300 hover:border-gray-500 hover:bg-gray-50',
-  insurance: 'border-indigo-300 hover:border-indigo-500 hover:bg-indigo-50',
-  legal: 'border-slate-300 hover:border-slate-500 hover:bg-slate-50',
-  'home services': 'border-yellow-300 hover:border-yellow-500 hover:bg-yellow-50',
-  pharmacy: 'border-emerald-300 hover:border-emerald-500 hover:bg-emerald-50',
-  fitness: 'border-rose-300 hover:border-rose-500 hover:bg-rose-50',
-  education: 'border-sky-300 hover:border-sky-500 hover:bg-sky-50',
-  'pet care': 'border-amber-300 hover:border-amber-500 hover:bg-amber-50',
-  accounting: 'border-teal-300 hover:border-teal-500 hover:bg-teal-50',
-  salon: 'border-pink-300 hover:border-pink-500 hover:bg-pink-50',
-  'auto repair': 'border-zinc-300 hover:border-zinc-500 hover:bg-zinc-50',
-}
-
 export default function VoiceAgentsPage() {
   const router = useRouter()
   const [agents, setAgents] = useState<VoiceAgent[]>([])
   const [workflows, setWorkflows] = useState<Workflow[]>([])
+  const [creatingFor, setCreatingFor] = useState<string | null>(null)
   const industries = getAllIndustries()
 
   useEffect(() => {
@@ -80,12 +42,40 @@ export default function VoiceAgentsPage() {
     fetchData()
   }, [])
 
-  const handleIndustryClick = (industryId: string) => {
-    const agent = agents.find(
+  const handleIndustryClick = async (industryId: string) => {
+    const existing = agents.find(
       a => a.industry.toLowerCase() === industryId.toLowerCase()
     )
-    if (agent) {
-      router.push(`/voice-agents/${agent.id}`)
+    if (existing) {
+      router.push(`/voice-agents/${existing.id}`)
+      return
+    }
+
+    // No agent yet for this industry — auto-create one using industry config defaults.
+    const config = getIndustryConfig(industryId)
+    if (!config) return
+    setCreatingFor(industryId)
+    try {
+      const res = await fetch('/api/voice-agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `${config.name} Assistant`,
+          language: 'en-US',
+          voice: 'alloy',
+          greeting: config.defaultGreeting,
+          industry: config.id,
+          status: 'active',
+          systemPrompt: config.systemPrompt,
+          maxCallDuration: 300,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to create voice agent')
+      const created = await res.json()
+      router.push(`/voice-agents/${created.id}`)
+    } catch (err) {
+      console.error(err)
+      setCreatingFor(null)
     }
   }
 
@@ -136,16 +126,19 @@ export default function VoiceAgentsPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {industries.map((industry) => {
-          const emoji = INDUSTRY_EMOJIS[industry.id] || '\u{1F4BC}'
-          const colorClass = INDUSTRY_COLORS[industry.id] || 'border-gray-300 hover:border-gray-500'
+          const emoji = getIndustryEmoji(industry.id)
+          const colorClass = getIndustryColorClass(industry.id)
           const workflow = getWorkflowForIndustry(industry.id)
           const agentCount = getAgentCountForIndustry(industry.id)
+
+          const isCreating = creatingFor === industry.id
 
           return (
             <button
               key={industry.id}
               onClick={() => handleIndustryClick(industry.id)}
-              className={`bg-white rounded-xl border-2 p-6 text-left transition-all duration-200 cursor-pointer group ${colorClass}`}
+              disabled={isCreating}
+              className={`bg-white rounded-xl border-2 p-6 text-left transition-all duration-200 cursor-pointer group disabled:opacity-60 disabled:cursor-wait ${colorClass}`}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="text-4xl group-hover:scale-110 transition-transform duration-200">
@@ -174,7 +167,10 @@ export default function VoiceAgentsPage() {
                 </div>
               </div>
               <h3 className="font-semibold text-gray-900">{industry.name}</h3>
-              {workflow && (
+              {isCreating && (
+                <p className="text-xs text-primary-600 mt-1">Setting up agent…</p>
+              )}
+              {!isCreating && workflow && (
                 <p className="text-xs text-gray-500 mt-1 truncate">{workflow.name}</p>
               )}
               {workflow && Array.isArray(workflow.nodes) && (
