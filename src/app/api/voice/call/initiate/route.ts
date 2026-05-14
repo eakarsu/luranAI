@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { makeCall } from '@/lib/twilio'
+import { makeCall, configureInboundWebhook } from '@/lib/twilio'
 import { makeVapiCall } from '@/lib/vapi'
 import { makeBlandCall } from '@/lib/bland'
 import { buildSystemPrompt } from '@/lib/industry-config'
@@ -42,6 +42,20 @@ export async function POST(request: NextRequest) {
 
     let sid: string
     let status: string
+
+    const transferNumber = agent.transferNumber || undefined
+
+    // Auto-configure the Twilio inbound webhook on the transfer number.
+    // All providers (Twilio, Vapi, Bland) dial this number through PSTN.
+    // Twilio receives the call and our /api/voice/inbound webhook answers as the AI specialist.
+    if (transferNumber) {
+      try {
+        await configureInboundWebhook(transferNumber, `${webhookBase}/api/voice/inbound`)
+        console.log(`[setup] Twilio webhook configured for ${transferNumber}`)
+      } catch {
+        // Silently skip — transfer number may be a personal/non-Twilio line
+      }
+    }
 
     if (provider === 'vapi') {
       const vapiWebhookUrl = `${webhookBase}/api/voice/call/vapi-webhook`
@@ -99,7 +113,11 @@ export async function POST(request: NextRequest) {
           currentNodeId: triggerNode?.id || nodes[0]?.id || 'trigger',
           nodes,
           edges,
-          variables: (workflow.variables as Record<string, unknown>) || {},
+          variables: {
+            ...(workflow.variables as Record<string, unknown>) || {},
+            // Inject agent's transfer number so {{transfer_number}} resolves in all workflow nodes
+            ...(transferNumber ? { transfer_number: transferNumber } : {}),
+          },
           collectedInfo: {},
         }
         console.log(`Workflow "${workflow.name}" loaded for call ${sid} (${nodes.length} nodes)`)
@@ -117,6 +135,7 @@ export async function POST(request: NextRequest) {
       phoneNumber,
       conversationGoal,
       provider,
+      transferNumber,
       workflow: workflowState,
     })
 

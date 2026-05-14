@@ -14,6 +14,7 @@ interface ExecutionResult {
   shouldHangup: boolean
   shouldTransfer: boolean
   transferNumber?: string
+  transferRole?: string
   updatedWorkflow: WorkflowState
 }
 
@@ -33,6 +34,20 @@ function turnResponseSuffix(channel: Channel): string {
   return channel === 'chat'
     ? 'Respond conversationally in 1-3 short sentences or a brief paragraph. Plain text only — no markdown.'
     : 'Respond in 1-2 natural spoken sentences. Do NOT use lists, bullet points, or markdown. This is a phone call.'
+}
+
+// Resolve the effective system prompt for a node.
+// Priority: node-level persona → branch-level active_persona variable → base agent prompt.
+function resolveSystemPrompt(
+  baseSystemPrompt: string,
+  currentNode: WorkflowNode,
+  workflow: WorkflowState
+): string {
+  const nodeLevelPersona = currentNode.config.persona as string | undefined
+  if (nodeLevelPersona) return nodeLevelPersona
+  const branchPersona = workflow.variables.active_persona as string | undefined
+  if (branchPersona) return branchPersona
+  return baseSystemPrompt
 }
 
 // Build an ExecutionContext compatible with workflow-engine functions
@@ -94,11 +109,13 @@ export async function executeWorkflowTurn(
   let shouldHangup = false
   let shouldTransfer = false
   let transferNumber: string | undefined
+  let transferRole: string | undefined
 
   switch (currentNode.type) {
     case 'ai_response': {
       const nodePrompt = buildNodePrompt(currentNode, context)
-      const fullPrompt = `${systemPrompt}\n\nCURRENT TASK: ${nodePrompt}\n\nIMPORTANT: ${turnResponseSuffix(channel)}`
+      const effectivePrompt = resolveSystemPrompt(systemPrompt, currentNode, workflow)
+      const fullPrompt = `${effectivePrompt}\n\nCURRENT TASK: ${nodePrompt}\n\nIMPORTANT: ${turnResponseSuffix(channel)}`
       response = await generateTurnResponse(channel, fullPrompt, conversationHistory)
 
       // If the node sets a variable, use AI to extract it
@@ -137,7 +154,8 @@ export async function executeWorkflowTurn(
             const ackInstruction = hasPriorAnswers
               ? 'Briefly acknowledge what the user just said in one short clause (e.g., "Got it" or echoing the value). Then ask the question.'
               : 'Ask the question warmly.'
-            const prompt = `${systemPrompt}\n\nCURRENT TASK: Ask the user this single question. Do NOT ask anything else, do NOT batch multiple questions.\n\nQUESTION TO ASK: "${targetedQuestion}"\n\n${ackInstruction}\n\n${turnResponseSuffix(channel)}`
+            const effectivePrompt = resolveSystemPrompt(systemPrompt, currentNode, workflow)
+            const prompt = `${effectivePrompt}\n\nCURRENT TASK: Ask the user this single question. Do NOT ask anything else, do NOT batch multiple questions.\n\nQUESTION TO ASK: "${targetedQuestion}"\n\n${ackInstruction}\n\n${turnResponseSuffix(channel)}`
             response = await generateTurnResponse(channel, prompt, conversationHistory)
             break
           }
@@ -148,7 +166,8 @@ export async function executeWorkflowTurn(
             .filter(([, v]) => v)
             .map(([k, v]) => `${k}: ${v}`)
             .join(', ')
-          const prompt = `${systemPrompt}\n\nCURRENT TASK: ${nodePrompt}\n\nAlready collected: ${collectedSummary || 'nothing yet'}\nStill need: ${stillMissing.join(', ')}\n\nAsk for the missing information naturally. Ask ONE question at a time. ${turnResponseSuffix(channel)}`
+          const effectivePrompt = resolveSystemPrompt(systemPrompt, currentNode, workflow)
+          const prompt = `${effectivePrompt}\n\nCURRENT TASK: ${nodePrompt}\n\nAlready collected: ${collectedSummary || 'nothing yet'}\nStill need: ${stillMissing.join(', ')}\n\nAsk for the missing information naturally. Ask ONE question at a time. ${turnResponseSuffix(channel)}`
           response = await generateTurnResponse(channel, prompt, conversationHistory)
           // Stay on this node
           break
@@ -212,7 +231,12 @@ export async function executeWorkflowTurn(
         ? "I'll have a team member reach out to you directly to help with this."
         : "I'm transferring you now. Please hold.")
       shouldTransfer = true
-      transferNumber = channel === 'voice' ? (currentNode.config.transferNumber as string) : undefined
+      transferRole = currentNode.config.role as string | undefined
+      if (channel === 'voice') {
+        const rawNumber = currentNode.config.transferNumber as string | undefined
+        const resolved = rawNumber ? substituteVars(rawNumber, workflow) : undefined
+        transferNumber = resolved && !resolved.includes('{{') ? resolved : undefined
+      }
       const nextId = getNextNode(currentNode.id, edges, context)
       if (nextId) workflow.currentNodeId = nextId
       break
@@ -297,6 +321,7 @@ export async function executeWorkflowTurn(
     shouldHangup,
     shouldTransfer,
     transferNumber,
+    transferRole,
     updatedWorkflow: workflow,
   }
 }

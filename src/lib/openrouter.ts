@@ -128,6 +128,133 @@ Be specific — reference actual details from the conversation, not generic plac
   ], 1024, 0.3)
 }
 
+export async function generateHandoffSummary(transcript: string, channel: string, urgency?: string) {
+  return callOpenRouter([
+    { role: 'system', content: `You are preparing a concise handoff for a human agent taking over an in-progress conversation.
+Produce these sections:
+1. **Customer**: name (if known), key identifiers
+2. **Channel**: ${channel}
+3. **Urgency**: low/medium/high — with a one-line reason
+4. **What customer wants** (1-2 sentences)
+5. **What we already tried** (bullet list)
+6. **Open questions** (bullet list)
+7. **Recommended next action** (one sentence)
+Keep it under 150 words.` },
+    { role: 'user', content: `Transcript:\n${transcript}\n\nUrgency hint (optional): ${urgency || 'unspecified'}` }
+  ], 600, 0.3)
+}
+
+export async function generateAgentCoaching(transcript: string, agentName?: string) {
+  return callOpenRouter([
+    { role: 'system', content: `You are a sales/support coach. Review the conversation and produce post-call coaching.
+Sections:
+1. **What went well** (3 bullets)
+2. **Missed opportunities** (2-3 bullets)
+3. **Risk moments** — places the agent could have escalated tone or losing the customer
+4. **Specific phrasing recommendations** — 2-3 alternative lines to try next time
+5. **Skill area to practice** (one)
+Be candid but constructive.` },
+    { role: 'user', content: `Agent: ${agentName || 'unknown'}\n\nTranscript:\n${transcript}` }
+  ], 1000, 0.4)
+}
+
+// Apply pass 4 helpers
+
+export function isOpenRouterConfigured(): boolean {
+  const key = process.env.OPENROUTER_API_KEY
+  return !!key && key !== 'your-openrouter-key-here'
+}
+
+export async function translateMessage(
+  text: string,
+  targetLanguage: string,
+  sourceLanguage?: string,
+  channel?: string
+) {
+  return callOpenRouter([
+    { role: 'system', content: `You translate customer-communication messages between languages while preserving tone, intent, and channel-appropriate formatting.
+
+Rules:
+- Preserve the original intent and tone exactly
+- Keep names, IDs, order numbers, dates, currency unchanged
+- Adjust honorifics and formality for the target language's norms
+- For SMS, keep total length close to source; for voice, prefer natural spoken phrasing
+- Return ONLY a JSON object with the shape:
+{
+  "detected_source_language": string,
+  "translated_text": string,
+  "confidence_0_to_100": number,
+  "tone_preservation_notes": string,
+  "channel_adjustments_made": [string],
+  "alternate_phrasings": [string]
+}` },
+    { role: 'user', content: `Source language hint: ${sourceLanguage || 'auto-detect'}
+Target language: ${targetLanguage}
+Channel: ${channel || 'unspecified'}
+
+Message:
+${text}` }
+  ], 700, 0.3)
+}
+
+export async function sentimentRollup(
+  perChannelSentiments: Array<{ channel: string; samples: string[] }>,
+  contactLabel?: string
+) {
+  return callOpenRouter([
+    { role: 'system', content: `You aggregate per-channel sentiment samples for one contact into a cross-channel rollup. Identify trend direction, divergence between channels, and escalation risk.
+
+Return ONLY a JSON object:
+{
+  "contact": string,
+  "overall_sentiment": "positive|negative|neutral|mixed",
+  "trend_direction": "improving|degrading|stable|volatile",
+  "per_channel_summary": [{ "channel": string, "sentiment": string, "evidence": string, "sample_count": number }],
+  "channel_divergence_flags": [string],
+  "escalation_risk": "low|medium|high",
+  "recommended_next_action": string,
+  "talking_points_for_human_agent": [string]
+}` },
+    { role: 'user', content: `Contact: ${contactLabel || 'unspecified'}
+
+Per-channel samples:
+${JSON.stringify(perChannelSentiments)}` }
+  ], 1000, 0.3)
+}
+
+export async function predictiveProactiveOutreach(
+  contactProfile: string,
+  recentInteractions: string,
+  business_goal?: string
+) {
+  return callOpenRouter([
+    { role: 'system', content: `You are a customer-success / sales strategist. Given a contact profile and recent interactions, decide if proactive outreach is warranted, what channel to use, what to say, and what risks to watch.
+
+Return ONLY a JSON object:
+{
+  "outreach_recommended": boolean,
+  "urgency": "low|medium|high",
+  "primary_channel": "voice|chat|sms|email",
+  "secondary_channel": "voice|chat|sms|email|none",
+  "best_window_hint": string,
+  "at_risk_signals_detected": [string],
+  "opportunity_signals_detected": [string],
+  "draft_message": string,
+  "alt_message_short": string,
+  "do_not_say": [string],
+  "expected_outcome_band": "low|medium|high",
+  "follow_up_plan": [string]
+}` },
+    { role: 'user', content: `Business goal: ${business_goal || 'retention and timely upsell'}
+
+Contact profile:
+${contactProfile}
+
+Recent interactions:
+${recentInteractions}` }
+  ], 1100, 0.4)
+}
+
 // Multi-turn phone call conversation
 export async function generateCallResponse(
   systemPrompt: string,

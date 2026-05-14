@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import StatusBadge from '@/components/ui/StatusBadge'
 
@@ -56,6 +56,14 @@ const industryEmojis: Record<string, string> = {
 }
 
 export default function WorkflowsPage() {
+  return (
+    <Suspense fallback={<div className="p-6"><div className="animate-pulse h-8 bg-gray-200 rounded w-1/3" /></div>}>
+      <WorkflowsContent />
+    </Suspense>
+  )
+}
+
+function WorkflowsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [workflows, setWorkflows] = useState<Workflow[]>([])

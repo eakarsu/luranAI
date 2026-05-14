@@ -27,6 +27,7 @@ export const INDUSTRY_EMOJIS: Record<string, string> = {
   childcare: '\u{1F476}',
   optometry: '\u{1F453}',
   funeral: '\u{1F54A}',
+  banking: '\u{1F3E6}',
 }
 
 export const INDUSTRY_COLORS: Record<string, string> = {
@@ -55,6 +56,7 @@ export const INDUSTRY_COLORS: Record<string, string> = {
   childcare: 'border-pink-300 hover:border-pink-500 hover:bg-pink-50',
   optometry: 'border-blue-300 hover:border-blue-500 hover:bg-blue-50',
   funeral: 'border-stone-300 hover:border-stone-500 hover:bg-stone-50',
+  banking: 'border-green-300 hover:border-green-500 hover:bg-green-50',
 }
 
 export function getIndustryEmoji(industryId: string): string {

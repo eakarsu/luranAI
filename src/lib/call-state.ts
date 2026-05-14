@@ -29,6 +29,7 @@ export interface ActiveCall {
   turnCount: number
   conversationGoal?: string
   provider: 'twilio' | 'vapi' | 'bland'
+  transferNumber?: string
   workflow?: WorkflowState
 }
 
@@ -54,6 +55,32 @@ const activeCalls = new Map<string, ActiveCall>()
 const audioBuffers = new Map<string, Buffer>()
 const audioCleanupTimers = new Map<string, NodeJS.Timeout>()
 
+// Maps parent callSid → specialist role (Twilio <Dial> transfers)
+const pendingTransfers = new Map<string, string>()
+
+export function setPendingTransfer(parentCallSid: string, role: string): void {
+  pendingTransfers.set(parentCallSid, role)
+  setTimeout(() => pendingTransfers.delete(parentCallSid), 5 * 60 * 1000)
+}
+
+export function getPendingTransfer(parentCallSid: string): string | undefined {
+  return pendingTransfers.get(parentCallSid)
+}
+
+// Maps customer phone → specialist role (Vapi/Bland transfers — caller ID is preserved)
+const pendingTransfersByPhone = new Map<string, string>()
+
+export function setPendingTransferByPhone(customerPhone: string, role: string): void {
+  pendingTransfersByPhone.set(customerPhone, role)
+  setTimeout(() => pendingTransfersByPhone.delete(customerPhone), 2 * 60 * 1000)
+}
+
+export function getPendingTransferByPhone(customerPhone: string): string | undefined {
+  const role = pendingTransfersByPhone.get(customerPhone)
+  if (role) pendingTransfersByPhone.delete(customerPhone)
+  return role
+}
+
 export function createCall(params: {
   callSid: string
   agentId: string
@@ -64,7 +91,8 @@ export function createCall(params: {
   language: string
   phoneNumber: string
   conversationGoal?: string
-  provider?: 'twilio' | 'vapi'
+  provider?: 'twilio' | 'vapi' | 'bland'
+  transferNumber?: string
   workflow?: WorkflowState
 }): ActiveCall {
   const call: ActiveCall = {
@@ -82,6 +110,7 @@ export function createCall(params: {
     turnCount: 0,
     conversationGoal: params.conversationGoal,
     provider: params.provider || 'twilio',
+    transferNumber: params.transferNumber,
     workflow: params.workflow,
   }
   activeCalls.set(params.callSid, call)

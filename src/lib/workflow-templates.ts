@@ -186,7 +186,7 @@ export const ALL_INDUSTRY_WORKFLOWS: IndustryWorkflow[] = [
       ], prompt: 'Tell me about what you\'re looking for. What type of property? What area? What\'s your budget range? Are you pre-approved for financing?' }, position: { x: 250, y: 180 } },
       { id: 'score', type: 'ai_response', label: 'Score Lead', config: { prompt: 'Score this lead: hot (pre-approved + buying within 30 days), warm (serious but 1-3 months), or cold (just browsing). Set lead_score.', setVariable: 'lead_score' }, position: { x: 250, y: 280 } },
       { id: 'branch', type: 'condition', label: 'Route by Score', config: {}, position: { x: 250, y: 360 } },
-      { id: 'hot', type: 'transfer_call', label: 'Transfer to Agent', config: { message: 'Excellent! Based on what you\'ve told me, I\'d love to connect you with one of our top agents who specializes in your area. One moment please.' }, position: { x: 0, y: 460 } },
+      { id: 'hot', type: 'transfer_call', label: 'Transfer to Agent', config: { message: 'Excellent! Based on what you\'ve told me, I\'d love to connect you with one of our top agents who specializes in your area. One moment please.', transferNumber: '{{transfer_number}}' }, position: { x: 0, y: 460 } },
       { id: 'warm', type: 'collect_info', label: 'Schedule Showing', config: { fields: ['preferred_date', 'preferred_time'], questions: [
         'I\'d love to set up a showing — what days work for you?',
         'And what time of day is best — weekday evenings or weekends?',
@@ -1351,6 +1351,142 @@ export const ALL_INDUSTRY_WORKFLOWS: IndustryWorkflow[] = [
       { id: 'e12', source: 'memorial', target: 'confirm' }, { id: 'e13', source: 'confirm', target: 'contact' },
       { id: 'e14', source: 'contact', target: 'end' }, { id: 'e15', source: 'cremation', target: 'end' },
       { id: 'e16', source: 'transport', target: 'end' },
+    ],
+  },
+
+  // ─── Banking ────────────────────────────────────────────────────────────────
+  {
+    name: 'Bank Customer Service',
+    description: 'Full banking call flow: identity verification, account inquiries, card services, loan specialist transfer, fraud escalation',
+    trigger: 'inbound_call',
+    industry: 'banking',
+    nodes: [
+      // ── Entry ──────────────────────────────────────────────────────────────
+      { id: 't', type: 'trigger', label: 'Inbound Call', config: { trigger: 'inbound_call' }, position: { x: 350, y: 0 } },
+      { id: 'greet', type: 'play_message', label: 'Welcome', config: { message: "Thank you for calling. I'm your bank's virtual assistant. I can help with accounts, cards, loans, and more. How can I assist you today?" }, position: { x: 350, y: 100 } },
+      { id: 'intent', type: 'ai_response', label: 'Detect Intent', config: { prompt: 'Determine the caller\'s intent. Set caller_intent to one of: account_inquiry, card_lost_stolen, card_dispute, card_activation, loan_inquiry, new_account, branch_atm, fraud.', setVariable: 'caller_intent' }, position: { x: 350, y: 200 } },
+
+      // ── Fraud fast-path (no identity check — freeze first, ask questions later) ──
+      { id: 'fraud_check', type: 'condition', label: 'Fraud?', config: { variable: 'caller_intent' }, position: { x: 350, y: 300 } },
+      { id: 'fraud_escalate', type: 'escalate', label: 'Fraud Escalation', config: { message: "I'm escalating this to our fraud team immediately. Stay on the line — your card can be frozen right now while we investigate.", priority: 'urgent' }, position: { x: 0, y: 400 } },
+
+      // ── Identity verification (all non-fraud paths) ────────────────────────
+      { id: 'verify', type: 'collect_info', label: 'Verify Identity', config: { fields: ['caller_name', 'last_four_ssn', 'account_last_four'], questions: [
+        "I'll need to verify your identity before we proceed. Could I have your full name?",
+        'Thank you. For security, what are the last 4 digits of your Social Security Number?',
+        'And the last 4 digits of your account or card number?',
+      ], prompt: 'Verify the caller before discussing account details. Collect full name, last 4 of SSN, and last 4 of account/card number.' }, position: { x: 350, y: 400 } },
+
+      // ── Intent router ──────────────────────────────────────────────────────
+      { id: 'intent_branch', type: 'condition', label: 'Route by Intent', config: { variable: 'caller_intent' }, position: { x: 350, y: 500 } },
+
+      // ── Branch: Account Inquiry (AI handles fully) ─────────────────────────
+      { id: 'account_ai', type: 'ai_response', label: 'Account Info', config: { prompt: 'Help the verified customer with balance or recent transaction questions. Never read full account numbers. Summarize transactions if asked and flag anything unusual, suggesting they dispute it if needed.' }, position: { x: 0, y: 620 } },
+
+      // ── Branch: Card Lost/Stolen (AI handles — freeze is informational) ────
+      { id: 'card_lost_stolen', type: 'ai_response', label: 'Card Freeze', config: {
+        persona: 'You are a bank security specialist. Be calm, reassuring, and efficient. The customer has reported a lost or stolen card — your priority is to make them feel safe and give them clear next steps. Do not read out any account numbers.',
+        prompt: 'Confirm the card ending in {{account_last_four}} is now flagged for cancellation. Tell the customer a replacement card will arrive in 5–7 business days. Ask if they need to update any automatic payments linked to that card.',
+      }, position: { x: 150, y: 620 } },
+
+      // ── Branch: Card Dispute (needs a real disputes specialist) ───────────
+      { id: 'card_dispute_collect', type: 'collect_info', label: 'Dispute Details', config: {
+        persona: 'You are a card disputes specialist. Be empathetic and methodical — the customer is frustrated about an unauthorised or incorrect charge. Acknowledge their concern before asking questions. Guide them calmly through the process.',
+        fields: ['dispute_amount', 'dispute_merchant', 'dispute_date'],
+        questions: [
+          "I'm sorry to hear about this charge. I can help open a dispute right away. What is the transaction amount?",
+          'What merchant name or description appears on the charge?',
+          'And what date did the charge appear on your statement?',
+        ],
+        prompt: 'Collect dispute details: transaction amount, merchant name, and date.',
+      }, position: { x: 300, y: 620 } },
+      { id: 'card_dispute_transfer', type: 'transfer_call', label: 'Transfer to Disputes', config: { message: "I've captured all the details. I'm connecting you now to a disputes specialist who will formally open your Regulation E claim and give you a case number. Please hold just a moment.", transferNumber: '{{transfer_number}}', role: 'card_specialist' }, position: { x: 300, y: 740 } },
+
+      // ── Branch: Card Activation / PIN Reset (AI handles with IVR guidance) ─
+      { id: 'card_activation', type: 'ai_response', label: 'Card Activation', config: {
+        persona: 'You are a friendly bank support agent helping with card setup. Be clear, patient, and step-by-step — some customers may not be tech-savvy.',
+        prompt: 'Guide the customer through card activation or PIN reset. For activation: call the number on the card sticker, use the mobile app under Cards > Activate, or visit any branch. For PIN reset: visit any ATM with the card and a photo ID, or reset via the mobile app under Cards > PIN. Offer to stay on the line while they try.',
+      }, position: { x: 500, y: 620 } },
+
+      // ── Branch: Loan Inquiry (AI gives overview, then offers live transfer) ─
+      { id: 'loan_info', type: 'ai_response', label: 'Loan Overview', config: {
+        persona: 'You are Alex, a knowledgeable and friendly loan specialist. You speak with confidence about financial products but never pressure the customer. Your goal is to understand what they need and match them to the right product — or connect them with a specialist who can give them a personalised rate.',
+        prompt: 'Describe available loan products: personal loans (unsecured, fast approval), auto loans, home equity lines of credit, and mortgages. Do NOT quote specific rates — rates depend on credit profile. Ask which product interests them and whether they would like to speak with a loan specialist for a personalised quote and to begin an application.',
+      }, position: { x: 650, y: 620 } },
+      { id: 'loan_set_flag', type: 'ai_response', label: 'Gauge Interest', config: {
+        persona: 'You are Alex, a friendly loan specialist. Be warm and low-pressure.',
+        prompt: 'Ask the caller: "Would you like me to connect you with a loan specialist right now for a personalised rate, or would you prefer I send information by email first?" Set wants_loan_specialist to yes or no based on their answer.',
+        setVariable: 'wants_loan_specialist',
+      }, position: { x: 650, y: 700 } },
+      { id: 'loan_specialist_check', type: 'condition', label: 'Wants Specialist?', config: { variable: 'wants_loan_specialist' }, position: { x: 650, y: 780 } },
+      { id: 'loan_transfer', type: 'transfer_call', label: 'Transfer to Loan Specialist', config: {
+        message: "Perfect — I'm connecting you with Alex, our loan specialist now. Alex will walk you through rates, terms, and next steps. Please hold just a moment.",
+        transferNumber: '{{transfer_number}}',
+        role: 'loan_specialist',
+      }, position: { x: 550, y: 880 } },
+
+      // ── Branch: New Account ────────────────────────────────────────────────
+      { id: 'new_account_collect', type: 'collect_info', label: 'New Account Info', config: {
+        persona: 'You are Sam, a welcoming new accounts specialist. Enthusiastic and warm.',
+        fields: ['account_type_interest', 'caller_name', 'phone', 'email'],
+        questions: [
+          "Wonderful — I'd love to help you get started! Are you interested in a checking account, a savings account, or both?",
+          'Could I get your full name?',
+          'Best phone number to reach you?',
+          'And your email address?',
+        ],
+        prompt: 'Collect new account interest and contact details.',
+      }, position: { x: 800, y: 620 } },
+      { id: 'new_account_transfer', type: 'transfer_call', label: 'Transfer to Account Specialist', config: {
+        message: "Thanks! I'm connecting you with Sam, our new accounts specialist, who will get everything set up for you in just a few minutes. Please hold!",
+        transferNumber: '{{transfer_number}}',
+        role: 'account_specialist',
+      }, position: { x: 800, y: 740 } },
+
+      // ── Branch: Branch / ATM (AI handles fully) ────────────────────────────
+      { id: 'branch_atm', type: 'ai_response', label: 'Branch & ATM', config: { prompt: 'Help the caller find the nearest branch or ATM. Ask for their zip code or city. Provide typical branch hours (Mon–Fri 9am–5pm, Sat 9am–1pm) and mention that our surcharge-free ATM network includes all major networks.' }, position: { x: 950, y: 620 } },
+
+      // ── Shared wrap-up (branches that AI fully resolves) ───────────────────
+      { id: 'confirm', type: 'ai_response', label: 'Wrap Up', config: { prompt: 'Summarize what was handled and confirm the customer has everything they need. Ask if there is anything else before ending the call.' }, position: { x: 350, y: 860 } },
+      { id: 'contact', type: 'create_contact', label: 'Log Interaction', config: { source: 'inbound_call', tags: ['banking-customer', '{{caller_intent}}'] }, position: { x: 350, y: 940 } },
+      { id: 'end', type: 'end_call', label: 'Goodbye', config: { message: 'Thank you for banking with us. Have a great day!' }, position: { x: 350, y: 1020 } },
+    ],
+    edges: [
+      // Entry
+      { id: 'e1', source: 't', target: 'greet' },
+      { id: 'e2', source: 'greet', target: 'intent' },
+      { id: 'e3', source: 'intent', target: 'fraud_check' },
+      // Fraud fast-path
+      { id: 'e4', source: 'fraud_check', target: 'fraud_escalate', condition: 'caller_intent = fraud', label: 'Fraud' },
+      { id: 'e5', source: 'fraud_check', target: 'verify', label: 'Default' },
+      // Identity → route
+      { id: 'e6', source: 'verify', target: 'intent_branch' },
+      // Intent branches
+      { id: 'e7',  source: 'intent_branch', target: 'account_ai',           condition: 'caller_intent = account_inquiry',  label: 'Account' },
+      { id: 'e8',  source: 'intent_branch', target: 'card_lost_stolen',     condition: 'caller_intent = card_lost_stolen',  label: 'Lost/Stolen' },
+      { id: 'e9',  source: 'intent_branch', target: 'card_dispute_collect', condition: 'caller_intent = card_dispute',      label: 'Dispute' },
+      { id: 'e10', source: 'intent_branch', target: 'card_activation',      condition: 'caller_intent = card_activation',   label: 'Activation' },
+      { id: 'e11', source: 'intent_branch', target: 'loan_info',           condition: 'caller_intent = loan_inquiry', label: 'Loan' },
+      { id: 'e12', source: 'intent_branch', target: 'new_account_collect', condition: 'caller_intent = new_account',  label: 'New Account' },
+      { id: 'e13', source: 'intent_branch', target: 'branch_atm',           condition: 'caller_intent = branch_atm',        label: 'Branch/ATM' },
+      { id: 'e14', source: 'intent_branch', target: 'account_ai',           label: 'Default' },
+      // Card dispute → transfer
+      { id: 'e15', source: 'card_dispute_collect', target: 'card_dispute_transfer' },
+      // Loan → gauge interest → maybe transfer
+      { id: 'e16', source: 'loan_info', target: 'loan_set_flag' },
+      { id: 'e17', source: 'loan_set_flag', target: 'loan_specialist_check' },
+      { id: 'e18', source: 'loan_specialist_check', target: 'loan_transfer', condition: 'wants_loan_specialist = yes', label: 'Transfer' },
+      { id: 'e19', source: 'loan_specialist_check', target: 'confirm', label: 'No Transfer' },
+      // New account → transfer
+      { id: 'e20', source: 'new_account_collect', target: 'new_account_transfer' },
+      // AI-resolved branches → wrap up
+      { id: 'e21', source: 'account_ai',      target: 'confirm' },
+      { id: 'e22', source: 'card_lost_stolen', target: 'confirm' },
+      { id: 'e23', source: 'card_activation', target: 'confirm' },
+      { id: 'e24', source: 'branch_atm',      target: 'confirm' },
+      // Wrap up
+      { id: 'e25', source: 'confirm', target: 'contact' },
+      { id: 'e26', source: 'contact', target: 'end' },
     ],
   },
 ]

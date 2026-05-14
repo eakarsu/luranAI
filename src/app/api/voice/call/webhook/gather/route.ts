@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import twilio from 'twilio'
-import { getCall, addConversationTurn, storeAudio, mapLanguageToLocale } from '@/lib/call-state'
+import { getCall, addConversationTurn, storeAudio, mapLanguageToLocale, setPendingTransfer } from '@/lib/call-state'
 import { generateCallResponse } from '@/lib/openrouter'
 import { generateSpeech } from '@/lib/whisper'
 import { checkEscalationTriggers } from '@/lib/industry-config'
@@ -14,6 +14,12 @@ function mapVoiceToTTS(voice: string): 'alloy' | 'echo' | 'fable' | 'onyx' | 'no
     case 'Male-2': return 'echo'
     case 'Female-1': return 'nova'
     case 'Female-2': return 'shimmer'
+    case 'nova': return 'nova'
+    case 'shimmer': return 'shimmer'
+    case 'onyx': return 'onyx'
+    case 'echo': return 'echo'
+    case 'alloy': return 'alloy'
+    case 'fable': return 'fable'
     default: return 'nova'
   }
 }
@@ -101,15 +107,50 @@ export async function POST(request: NextRequest) {
 
     if (result.shouldTransfer) {
       addConversationTurn(callSid, 'assistant', aiResponse)
-      twiml.say({ voice: 'Polly.Joanna' }, aiResponse)
-      twiml.say({ voice: 'Polly.Joanna' }, "I apologize, but no one is available right now. Someone will call you back shortly. Thank you and goodbye.")
-      twiml.hangup()
+      // Play the transfer announcement using TTS so it matches the agent's voice
+      try {
+        const ttsVoice = mapVoiceToTTS(call.voice)
+        const audioBuffer = await generateSpeech(aiResponse, ttsVoice)
+        const transferTurnId = `transfer-${call.turnCount}`
+        storeAudio(callSid, transferTurnId, audioBuffer)
+        twiml.play(`${webhookBase}/api/voice/call/audio/${callSid}/${transferTurnId}`)
+      } catch {
+        twiml.say({ voice: 'Polly.Joanna' }, aiResponse)
+      }
+      // Node's transferNumber takes priority; fall back to agent's default transfer number
+      const dialNumber = result.transferNumber || call.transferNumber
+      if (dialNumber) {
+        if (result.transferRole) {
+          setPendingTransfer(callSid, result.transferRole)
+        }
+        const dial = twiml.dial({
+          action: `${webhookBase}/api/voice/call/webhook/transfer-fallback`,
+          method: 'POST',
+          timeout: 30,
+        })
+        dial.number(dialNumber)
+      } else {
+        twiml.say({ voice: 'Polly.Joanna' }, "I'm sorry, that specialist is not available right now. Someone will call you back shortly.")
+        twiml.hangup()
+      }
       return new NextResponse(twiml.toString(), {
         headers: { 'Content-Type': 'text/xml' },
       })
     }
   } else {
     // Freeform conversation (no workflow attached)
+
+    // Check if the caller is asking to be transferred to a human specialist
+    const transferTriggers = ['loan officer', 'loan specialist', 'transfer', 'connect me', 'speak to someone', 'talk to a person', 'real person', 'human agent', 'speak with a person']
+    const wantsTransfer = transferTriggers.some(t => lower.includes(t))
+    if (wantsTransfer && call.transferNumber) {
+      const msg = 'Of course — let me connect you with a specialist right away. Please hold.'
+      addConversationTurn(callSid, 'assistant', msg)
+      twiml.say({ voice: 'Polly.Joanna' }, msg)
+      twiml.dial(call.transferNumber)
+      return new NextResponse(twiml.toString(), { headers: { 'Content-Type': 'text/xml' } })
+    }
+
     aiResponse = await generateCallResponse(call.systemPrompt, historyForAI)
   }
 

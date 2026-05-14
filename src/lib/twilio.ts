@@ -51,6 +51,26 @@ export async function getMessageHistory(limit: number = 20) {
   }))
 }
 
+// Configure a Twilio phone number's Voice webhook to answer as an AI specialist
+export async function configureInboundWebhook(phoneNumber: string, webhookUrl: string): Promise<{ success: boolean; phoneSid: string }> {
+  const client = getClient()
+  const digits = phoneNumber.replace(/\D/g, '')
+  const e164 = phoneNumber.startsWith('+') ? `+${digits}` : `+1${digits}`
+
+  const numbers = await client.incomingPhoneNumbers.list({ phoneNumber: e164 })
+  if (!numbers.length) {
+    throw new Error(`No Twilio number found matching ${e164}`)
+  }
+
+  const phoneSid = numbers[0].sid
+  await client.incomingPhoneNumbers(phoneSid).update({
+    voiceUrl: webhookUrl,
+    voiceMethod: 'POST',
+  })
+
+  return { success: true, phoneSid }
+}
+
 // Voice calling
 export async function makeCall(
   to: string,

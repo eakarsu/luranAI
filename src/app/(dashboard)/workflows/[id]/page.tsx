@@ -499,16 +499,43 @@ export default function WorkflowEditorPage() {
               )}
 
               {selectedNodeData.type === 'transfer_call' && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Transfer Message</label>
-                  <textarea
-                    value={String(selectedNodeData.config.message || '')}
-                    onChange={(e) => updateNodeConfig(selectedNodeData.id, 'message', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    rows={2}
-                    placeholder="Message before transfer..."
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Transfer Message</label>
+                    <textarea
+                      value={String(selectedNodeData.config.message || '')}
+                      onChange={(e) => updateNodeConfig(selectedNodeData.id, 'message', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      rows={2}
+                      placeholder="Message before transfer..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={String(selectedNodeData.config.transferNumber || '')}
+                      onChange={(e) => updateNodeConfig(selectedNodeData.id, 'transferNumber', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder="+1 (555) 123-4567"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Leave blank to use the agent's default transfer number</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Specialist Role</label>
+                    <select
+                      value={String(selectedNodeData.config.role || '')}
+                      onChange={(e) => updateNodeConfig(selectedNodeData.id, 'role', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    >
+                      <option value="">General</option>
+                      <option value="loan_specialist">Loan Specialist (Alex)</option>
+                      <option value="card_specialist">Card Specialist (Jordan)</option>
+                      <option value="account_specialist">New Accounts Specialist (Sam)</option>
+                    </select>
+                    <p className="text-xs text-gray-400 mt-1">Sets which AI persona answers the transferred call</p>
+                  </div>
+                </>
               )}
 
               {selectedNodeData.type === 'escalate' && (

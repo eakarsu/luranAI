@@ -31,6 +31,7 @@ interface VoiceAgent {
   industry: string
   systemPrompt: string
   workflowId: string | null
+  transferNumber: string | null
 }
 
 interface TranscriptEntry {
@@ -50,6 +51,9 @@ export default function VoiceAgentDetailPage() {
 
   const [agentName, setAgentName] = useState('')
   const [customGreeting, setCustomGreeting] = useState('')
+  const [transferNumber, setTransferNumber] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [provider, setProvider] = useState<'twilio' | 'vapi' | 'bland'>('twilio')
   const [callSid, setCallSid] = useState<string | null>(null)
@@ -77,6 +81,7 @@ export default function VoiceAgentDetailPage() {
         setAgent(data)
         setAgentName(data.name)
         setCustomGreeting(data.greeting || '')
+        setTransferNumber(data.transferNumber || '')
         const config = getIndustryConfig(data.industry)
         setIndustry(config || null)
         // Fetch linked workflow
@@ -125,6 +130,40 @@ export default function VoiceAgentDetailPage() {
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [transcript])
+
+  const handleEdit = () => setIsEditing(true)
+
+  const handleCancel = () => {
+    if (!agent) return
+    setAgentName(agent.name)
+    setCustomGreeting(agent.greeting || '')
+    setTransferNumber(agent.transferNumber || '')
+    setIsEditing(false)
+  }
+
+  const handleSave = async () => {
+    if (!agent) return
+    setIsSaving(true)
+    try {
+      const res = await fetch(`/api/voice-agents/${agent.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: agentName,
+          greeting: customGreeting,
+          transferNumber: transferNumber || null,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to save')
+      const updated = await res.json()
+      setAgent(updated)
+      setIsEditing(false)
+    } catch {
+      setError('Failed to save agent settings')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const handleMakeCall = async () => {
     if (!phoneNumber.trim() || !agent) {
@@ -228,29 +267,87 @@ export default function VoiceAgentDetailPage() {
         <div className="space-y-6">
           {/* Agent Configuration */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Agent Configuration</h2>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Agent Name</label>
-              <input
-                type="text"
-                value={agentName}
-                onChange={(e) => setAgentName(e.target.value)}
-                placeholder={`${industry.name} Assistant`}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Agent Configuration</h2>
+              {!isEditing && (
+                <button
+                  onClick={handleEdit}
+                  className="flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 border border-primary-200 hover:border-primary-400 rounded-lg px-3 py-1.5 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit
+                </button>
+              )}
             </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Custom Greeting</label>
-              <textarea
-                value={customGreeting}
-                onChange={(e) => setCustomGreeting(e.target.value)}
-                placeholder={industry.defaultGreeting}
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-            </div>
+            {isEditing ? (
+              <>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Agent Name</label>
+                  <input
+                    type="text"
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
+                    placeholder={`${industry.name} Assistant`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Greeting</label>
+                  <textarea
+                    value={customGreeting}
+                    onChange={(e) => setCustomGreeting(e.target.value)}
+                    placeholder={industry.defaultGreeting}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="mb-5">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Transfer Number</label>
+                  <input
+                    type="tel"
+                    value={transferNumber}
+                    onChange={(e) => setTransferNumber(e.target.value)}
+                    placeholder="+1 (555) 123-4567"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Callers asking for a specialist will be transferred here</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex-1 py-2 rounded-lg font-medium text-sm bg-primary-600 hover:bg-primary-700 text-white transition-colors disabled:opacity-50"
+                  >
+                    {isSaving ? 'Saving...' : 'Save'}
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                    className="flex-1 py-2 rounded-lg font-medium text-sm border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-gray-500">Agent Name</p>
+                  <p className="text-sm font-medium text-gray-900">{agentName}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Greeting</p>
+                  <p className="text-sm text-gray-700">{customGreeting || <span className="italic text-gray-400">Default</span>}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Transfer Number</p>
+                  <p className="text-sm text-gray-700">{transferNumber || <span className="italic text-gray-400">Not set</span>}</p>
+                </div>
+              </div>
+            )}
 
             {workflow && (
               <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">

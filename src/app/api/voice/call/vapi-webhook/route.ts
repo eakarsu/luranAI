@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getCall, updateCallStatus, addConversationTurn, removeCall } from '@/lib/call-state'
+import { getCall, updateCallStatus, addConversationTurn, removeCall, setPendingTransferByPhone } from '@/lib/call-state'
 import { mapVapiStatus } from '@/lib/vapi'
 
 export async function POST(request: NextRequest) {
@@ -20,6 +20,35 @@ export async function POST(request: NextRequest) {
     console.log(`Vapi webhook: ${message.type} for call ${callId}`)
 
     switch (message.type) {
+      case 'tool-calls': {
+        // Handle prepareTransfer: store {customerPhone → role} so the inbound
+        // /api/voice/inbound webhook can look up which specialist to use.
+        const toolCalls: { id: string; function: { name: string; arguments: string } }[] = message.toolCallList || message.toolCalls || []
+        const results: { toolCallId: string; result: string }[] = []
+
+        for (const tc of toolCalls) {
+          if (tc.function?.name === 'prepareTransfer') {
+            try {
+              const args = JSON.parse(tc.function.arguments || '{}')
+              const role = args.role as string
+              const call = getCall(callId)
+              if (call?.phoneNumber && role) {
+                setPendingTransferByPhone(call.phoneNumber, role)
+                console.log(`[Vapi] prepareTransfer: ${call.phoneNumber} → ${role}`)
+              }
+              results.push({ toolCallId: tc.id, result: 'Transfer prepared. Now call transferCall immediately.' })
+            } catch {
+              results.push({ toolCallId: tc.id, result: 'Error parsing arguments.' })
+            }
+          }
+        }
+
+        if (results.length > 0) {
+          return NextResponse.json({ results })
+        }
+        break
+      }
+
       case 'status-update': {
         const mappedStatus = mapVapiStatus(message.status)
         updateCallStatus(callId, mappedStatus as any)
