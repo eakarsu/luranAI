@@ -1,15 +1,14 @@
 // Voice + screen-share video agent for technical support.
 // TODO: configure credentials — DAILY_API_KEY or LIVEKIT_API_KEY/SECRET for video infra.
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUser } from '@/lib/auth';
 
 type Room = { id: string; createdAt: Date; joinUrl: string | null; provider: string };
 const rooms = new Map<string, Room>();
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const user = await getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await req.json();
   const { action } = body;
 
@@ -51,5 +50,5 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  return NextResponse.json({ count: rooms.size, rooms: [...rooms.values()] });
+  return NextResponse.json({ count: rooms.size, rooms: Array.from(rooms.values()) });
 }

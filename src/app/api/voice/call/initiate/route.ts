@@ -3,18 +3,25 @@ import { prisma } from '@/lib/prisma'
 import { makeCall, configureInboundWebhook } from '@/lib/twilio'
 import { makeVapiCall } from '@/lib/vapi'
 import { makeBlandCall } from '@/lib/bland'
+import { makeRetellCall } from '@/lib/retell'
 import { buildSystemPrompt } from '@/lib/industry-config'
-import { createCall } from '@/lib/call-state'
+import { createCall, type CallProvider } from '@/lib/call-state'
+
+const SUPPORTED_PROVIDERS: CallProvider[] = ['twilio', 'vapi', 'bland', 'retell']
 
 export async function POST(request: NextRequest) {
   try {
     const { agentId, phoneNumber, conversationGoal, agentName, customGreeting, provider = 'twilio' } = await request.json()
+    const callProvider = provider as CallProvider
 
     if (!phoneNumber) {
       return NextResponse.json({ error: 'Phone number is required' }, { status: 400 })
     }
     if (!agentId) {
       return NextResponse.json({ error: 'Agent ID is required' }, { status: 400 })
+    }
+    if (!SUPPORTED_PROVIDERS.includes(callProvider)) {
+      return NextResponse.json({ error: `Unsupported call provider: ${provider}` }, { status: 400 })
     }
 
     // Fetch voice agent from database
@@ -45,9 +52,7 @@ export async function POST(request: NextRequest) {
 
     const transferNumber = agent.transferNumber || undefined
 
-    // Auto-configure the Twilio inbound webhook on the transfer number.
-    // All providers (Twilio, Vapi, Bland) dial this number through PSTN.
-    // Twilio receives the call and our /api/voice/inbound webhook answers as the AI specialist.
+    // Auto-configure Twilio inbound only for the providers that use Twilio for transfer legs.
     if (transferNumber) {
       try {
         await configureInboundWebhook(transferNumber, `${webhookBase}/api/voice/inbound`)
@@ -57,7 +62,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (provider === 'vapi') {
+    if (callProvider === 'vapi') {
       const vapiWebhookUrl = `${webhookBase}/api/voice/call/vapi-webhook`
       const result = await makeVapiCall({
         phoneNumber,
@@ -68,7 +73,7 @@ export async function POST(request: NextRequest) {
       })
       sid = result.sid
       status = result.status
-    } else if (provider === 'bland') {
+    } else if (callProvider === 'bland') {
       const blandWebhookUrl = `${webhookBase}/api/voice/call/bland-webhook`
       const result = await makeBlandCall({
         phoneNumber,
@@ -76,6 +81,16 @@ export async function POST(request: NextRequest) {
         greeting: effectiveGreeting,
         agentName: effectiveName,
         webhookUrl: blandWebhookUrl,
+      })
+      sid = result.sid
+      status = result.status
+    } else if (callProvider === 'retell') {
+      const result = await makeRetellCall({
+        phoneNumber,
+        systemPrompt,
+        greeting: effectiveGreeting,
+        agentName: effectiveName,
+        industry: agent.industry,
       })
       sid = result.sid
       status = result.status
@@ -134,7 +149,7 @@ export async function POST(request: NextRequest) {
       language: agent.language,
       phoneNumber,
       conversationGoal,
-      provider,
+      provider: callProvider,
       transferNumber,
       workflow: workflowState,
     })

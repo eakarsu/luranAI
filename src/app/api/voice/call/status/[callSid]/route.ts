@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCall, updateCallStatus, addConversationTurn, removeCall } from '@/lib/call-state'
 import { prisma } from '@/lib/prisma'
 import { mapBlandStatus } from '@/lib/bland'
+import { getRetellCallStatus, mapRetellStatus } from '@/lib/retell'
 import { getVapiCallStatus, mapVapiStatus } from '@/lib/vapi'
 import twilio from 'twilio'
 
@@ -36,6 +37,19 @@ async function pollTwilioStatus(callSid: string) {
   } catch {
     return null
   }
+}
+
+function isVapiFailureReason(endedReason?: string | null) {
+  if (!endedReason) return false
+  return (
+    endedReason.startsWith('call.start.error-') ||
+    endedReason.startsWith('call.in-progress.error-') ||
+    endedReason.startsWith('pipeline-error-') ||
+    endedReason === 'assistant-request-failed' ||
+    endedReason === 'assistant-request-returned-error' ||
+    endedReason === 'assistant-request-returned-invalid-assistant' ||
+    endedReason === 'assistant-request-returned-no-assistant'
+  )
 }
 
 export async function GET(
@@ -132,7 +146,13 @@ export async function GET(
   if (vapiNeedsPoll) {
     const vapiData = await getVapiCallStatus(callSid)
     if (vapiData) {
-      const mappedStatus = mapVapiStatus(vapiData.status)
+      if (vapiData.endedReason) {
+        call.endedReason = vapiData.endedReason
+      }
+
+      const mappedStatus = vapiData.status === 'ended' && isVapiFailureReason(vapiData.endedReason)
+        ? 'failed'
+        : mapVapiStatus(vapiData.status)
       if (mappedStatus !== call.status) {
         updateCallStatus(callSid, mappedStatus as any)
       }
@@ -169,7 +189,7 @@ export async function GET(
 
       // Handle ended call
       if (vapiData.status === 'ended') {
-        updateCallStatus(callSid, 'completed')
+        updateCallStatus(callSid, isVapiFailureReason(vapiData.endedReason) ? 'failed' : 'completed')
 
         try {
           const phoneNumber = call.phoneNumber || vapiData.customer?.number || ''
@@ -207,7 +227,7 @@ export async function GET(
                 voiceAgentId: call.agentId,
                 contactId: contact.id,
                 duration,
-                outcome: 'completed',
+                outcome: isVapiFailureReason(vapiData.endedReason) ? 'failed' : 'completed',
                 transcript: transcriptText,
               },
             })
@@ -309,12 +329,93 @@ export async function GET(
     }
   }
 
+  const retellNeedsPoll = call.provider === 'retell' && (
+    (call.status !== 'completed' && call.status !== 'failed') ||
+    (call.status === 'completed' && call.conversationHistory.length === 0)
+  )
+  if (retellNeedsPoll) {
+    const retellData = await getRetellCallStatus(callSid)
+    if (retellData) {
+      const mappedStatus = mapRetellStatus(retellData.call_status)
+      updateCallStatus(callSid, mappedStatus as any)
+
+      if (retellData.disconnection_reason) {
+        call.endedReason = retellData.disconnection_reason
+      }
+
+      const transcriptObject = retellData.transcript_object || retellData.transcript_with_tool_calls
+      if (Array.isArray(transcriptObject) && transcriptObject.length > call.conversationHistory.length) {
+        call.conversationHistory.length = 0
+        call.turnCount = 0
+        for (const item of transcriptObject) {
+          const role = item.role === 'agent' || item.role === 'assistant' ? 'assistant' : 'user'
+          const content = item.content || item.text || ''
+          if (content) addConversationTurn(callSid, role, content)
+        }
+      } else if (retellData.transcript && call.conversationHistory.length === 0) {
+        const lines = retellData.transcript.split('\n').filter((line: string) => line.trim())
+        for (const line of lines) {
+          if (line.startsWith('Agent:') || line.startsWith('Assistant:')) {
+            addConversationTurn(callSid, 'assistant', line.replace(/^(Agent|Assistant):\s*/, ''))
+          } else if (line.startsWith('User:') || line.startsWith('Caller:')) {
+            addConversationTurn(callSid, 'user', line.replace(/^(User|Caller):\s*/, ''))
+          }
+        }
+      }
+
+      if (mappedStatus === 'completed' || mappedStatus === 'failed') {
+        try {
+          const phoneNumber = call.phoneNumber || retellData.to_number || ''
+          const duration = retellData.duration_ms ? Math.round(retellData.duration_ms / 1000) : 0
+          const transcriptText = call.conversationHistory.length > 0
+            ? call.conversationHistory.map(t => `${t.role === 'user' ? 'Caller' : 'AI'}: ${t.content}`).join('\n')
+            : retellData.transcript || null
+
+          let contact = await prisma.contact.findFirst({ where: { phone: phoneNumber } })
+          if (!contact) {
+            contact = await prisma.contact.create({
+              data: {
+                firstName: 'Unknown',
+                lastName: 'Caller',
+                phone: phoneNumber,
+                industry: call.industry,
+                source: 'outbound-call',
+              },
+            })
+          }
+
+          const existing = await prisma.callLog.findFirst({
+            where: { voiceAgentId: call.agentId, contactId: contact.id },
+            orderBy: { createdAt: 'desc' },
+          })
+          const recentEnough = existing && (Date.now() - new Date(existing.createdAt).getTime()) < 60_000
+          if (!recentEnough) {
+            await prisma.callLog.create({
+              data: {
+                voiceAgentId: call.agentId,
+                contactId: contact.id,
+                duration,
+                outcome: mappedStatus,
+                transcript: transcriptText,
+              },
+            })
+          }
+        } catch (dbError) {
+          console.error('Failed to save Retell CallLog from poll:', dbError)
+        }
+
+        setTimeout(() => removeCall(callSid), 30_000)
+      }
+    }
+  }
+
   return NextResponse.json({
     callSid: call.callSid,
     status: call.status,
     industry: call.industry,
     phoneNumber: call.phoneNumber,
     startedAt: call.startedAt,
+    endedReason: call.endedReason,
     turnCount: call.turnCount,
     transcript: call.conversationHistory.map(t => ({
       role: t.role,

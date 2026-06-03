@@ -21,6 +21,17 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/luranai?schema=publi
 OPENROUTER_API_KEY="your-openrouter-api-key-here"
 JWT_SECRET="luranai-jwt-secret-key-2024"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
+PUBLIC_WEBHOOK_URL="https://your-ngrok-url.ngrok-free.app"
+TWILIO_ACCOUNT_SID=""
+TWILIO_AUTH_TOKEN=""
+TWILIO_PHONE_NUMBER=""
+TWILIO_VOICE_NUMBER=""
+VAPI_API_KEY=""
+VAPI_PHONE_NUMBER_ID=""
+BLAND_API_KEY=""
+RETELL_API_KEY=""
+RETELL_FROM_NUMBER=""
+RETELL_AGENT_ID=""
 EOF
   echo ".env created — update it with your real keys"
 else
@@ -61,7 +72,7 @@ npx prisma db push --accept-data-loss
 echo "Seeding database..."
 npx prisma db seed 2>/dev/null || echo "Seed may have already run"
 
-# Start dev server with hot reloading (Turbopack)
+# Start dev server with hot reloading
 echo ""
 echo "========================"
 echo "Dev server starting on http://localhost:3000"

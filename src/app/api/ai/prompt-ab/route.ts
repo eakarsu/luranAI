@@ -1,7 +1,6 @@
 // Prompt A/B testing harness with statistical significance.
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUser } from '@/lib/auth';
 import OpenAI from 'openai';
 
 const hasKey = !!process.env.OPENROUTER_API_KEY;
@@ -33,8 +32,8 @@ function tStat(a: number[], b: number[]) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const user = await getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await req.json();
   const { action } = body;
 

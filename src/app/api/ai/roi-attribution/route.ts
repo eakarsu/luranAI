@@ -1,15 +1,14 @@
 // ROI attribution dashboard (touchpoint → opportunity → revenue).
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
 type Touch = { id: string; campaignId: string; channel: string; contactId: string; at: number; valueUSD?: number };
 const touches: Touch[] = [];
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const user = await getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await req.json();
   const { action } = body;
 

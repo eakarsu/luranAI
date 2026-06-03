@@ -1,7 +1,6 @@
 // Omnichannel handoff agent with context preservation.
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUser } from '@/lib/auth';
 
 type Handoff = {
   id: string;
@@ -37,8 +36,8 @@ async function summarize(transcript: any[]): Promise<string> {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const user = await getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await req.json();
   const { action } = body;
 
@@ -71,5 +70,5 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  return NextResponse.json({ count: handoffs.size, handoffs: [...handoffs.values()].slice(-50) });
+  return NextResponse.json({ count: handoffs.size, handoffs: Array.from(handoffs.values()).slice(-50) });
 }

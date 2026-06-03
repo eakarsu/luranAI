@@ -179,6 +179,8 @@ export async function POST(request: NextRequest) {
       ended = await endVapiCall(callSid)
     } else if (provider === 'bland') {
       ended = await endBlandCall(callSid)
+    } else if (provider === 'retell') {
+      ended = true
     } else {
       ended = await endTwilioCall(callSid)
     }

@@ -14,6 +14,8 @@ export interface WorkflowState {
   collectedInfo: Record<string, string>
 }
 
+export type CallProvider = 'twilio' | 'vapi' | 'bland' | 'retell'
+
 export interface ActiveCall {
   callSid: string
   agentId: string
@@ -24,11 +26,12 @@ export interface ActiveCall {
   language: string
   conversationHistory: ConversationTurn[]
   status: 'initiating' | 'ringing' | 'in-progress' | 'completed' | 'failed' | 'busy' | 'no-answer'
+  endedReason?: string
   phoneNumber: string
   startedAt: number
   turnCount: number
   conversationGoal?: string
-  provider: 'twilio' | 'vapi' | 'bland'
+  provider: CallProvider
   transferNumber?: string
   workflow?: WorkflowState
 }
@@ -91,7 +94,7 @@ export function createCall(params: {
   language: string
   phoneNumber: string
   conversationGoal?: string
-  provider?: 'twilio' | 'vapi' | 'bland'
+  provider?: CallProvider
   transferNumber?: string
   workflow?: WorkflowState
 }): ActiveCall {

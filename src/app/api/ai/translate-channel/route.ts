@@ -1,7 +1,6 @@
 // Multilingual auto-translation across channels.
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUser } from '@/lib/auth';
 import OpenAI from 'openai';
 
 const hasKey = !!process.env.OPENROUTER_API_KEY;
@@ -12,8 +11,8 @@ const openai = hasKey ? new OpenAI({
 const MODEL = process.env.OPENROUTER_MODEL || 'anthropic/claude-3-5-sonnet-20241022';
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const user = await getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!openai) return NextResponse.json({ error: 'AI not configured' }, { status: 503 });
 
   const { text, sourceLanguage = 'auto', targetLanguage, channel = 'chat', preserveFormatting = true } = await req.json();

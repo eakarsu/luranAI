@@ -22,6 +22,15 @@ const navItems = [
     ),
   },
   {
+    name: 'Voice Platform',
+    href: '/voice-platform',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h9m-9 4.5h9m3-5.25l1.5 1.5 3-3" />
+      </svg>
+    ),
+  },
+  {
     name: 'SMS Campaigns',
     href: '/sms-campaigns',
     icon: (

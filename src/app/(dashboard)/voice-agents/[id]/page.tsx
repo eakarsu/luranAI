@@ -40,6 +40,8 @@ interface TranscriptEntry {
   timestamp: number
 }
 
+type CallProvider = 'twilio' | 'vapi' | 'bland' | 'retell'
+
 export default function VoiceAgentDetailPage() {
   const params = useParams()
   const id = params.id as string
@@ -55,9 +57,10 @@ export default function VoiceAgentDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [phoneNumber, setPhoneNumber] = useState('')
-  const [provider, setProvider] = useState<'twilio' | 'vapi' | 'bland'>('twilio')
+  const [provider, setProvider] = useState<CallProvider>('twilio')
   const [callSid, setCallSid] = useState<string | null>(null)
   const [callStatus, setCallStatus] = useState<string | null>(null)
+  const [callEndedReason, setCallEndedReason] = useState<string | null>(null)
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -112,6 +115,7 @@ export default function VoiceAgentDetailPage() {
         const res = await fetch(`/api/voice/call/status/${callSid}`)
         const data = await res.json()
         setCallStatus(data.status)
+        setCallEndedReason(data.endedReason || null)
         setTranscript(data.transcript || [])
         if (['completed', 'failed', 'busy', 'no-answer'].includes(data.status)) {
           stopPolling()
@@ -175,6 +179,7 @@ export default function VoiceAgentDetailPage() {
     setError(null)
     setTranscript([])
     setCallStatus(null)
+    setCallEndedReason(null)
 
     try {
       const res = await fetch('/api/voice/call/initiate', {
@@ -388,13 +393,14 @@ export default function VoiceAgentDetailPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Call Provider</label>
               <select
                 value={provider}
-                onChange={(e) => setProvider(e.target.value as 'twilio' | 'vapi' | 'bland')}
+                onChange={(e) => setProvider(e.target.value as CallProvider)}
                 disabled={isCallActive}
                 className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent ${isCallActive ? 'bg-gray-100' : 'bg-white'}`}
               >
                 <option value="twilio">Twilio (Default)</option>
                 <option value="vapi">Vapi.ai</option>
                 <option value="bland">Bland.ai</option>
+                <option value="retell">Retell AI</option>
               </select>
             </div>
 
@@ -475,6 +481,11 @@ export default function VoiceAgentDetailPage() {
                 {callSid && (
                   <span className="text-xs text-gray-400 ml-auto font-mono">{callSid.slice(0, 12)}...</span>
                 )}
+              </div>
+            )}
+            {callEndedReason && (
+              <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                Vapi ended reason: <span className="font-mono">{callEndedReason}</span>
               </div>
             )}
           </div>
