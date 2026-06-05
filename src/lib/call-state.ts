@@ -19,6 +19,7 @@ export type CallProvider = 'twilio' | 'vapi' | 'bland' | 'retell'
 export interface ActiveCall {
   callSid: string
   agentId: string
+  orgId?: string | null
   industry: string
   systemPrompt: string
   greeting: string
@@ -34,6 +35,8 @@ export interface ActiveCall {
   provider: CallProvider
   transferNumber?: string
   workflow?: WorkflowState
+  salesforceContext?: unknown
+  salesforceSyncedAt?: number
 }
 
 // Map display language names to Twilio locale codes
@@ -87,6 +90,7 @@ export function getPendingTransferByPhone(customerPhone: string): string | undef
 export function createCall(params: {
   callSid: string
   agentId: string
+  orgId?: string | null
   industry: string
   systemPrompt: string
   greeting: string
@@ -97,10 +101,12 @@ export function createCall(params: {
   provider?: CallProvider
   transferNumber?: string
   workflow?: WorkflowState
+  salesforceContext?: unknown
 }): ActiveCall {
   const call: ActiveCall = {
     callSid: params.callSid,
     agentId: params.agentId,
+    orgId: params.orgId,
     industry: params.industry,
     systemPrompt: params.systemPrompt,
     greeting: params.greeting,
@@ -115,6 +121,7 @@ export function createCall(params: {
     provider: params.provider || 'twilio',
     transferNumber: params.transferNumber,
     workflow: params.workflow,
+    salesforceContext: params.salesforceContext,
   }
   activeCalls.set(params.callSid, call)
   return call

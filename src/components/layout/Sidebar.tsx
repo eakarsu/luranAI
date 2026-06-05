@@ -139,6 +139,15 @@ const navItems = [
     ),
   },
   {
+    name: 'Salesforce',
+    href: '/salesforce',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 18.75h16.5M4.5 18.75V6.75A2.25 2.25 0 016.75 4.5h10.5a2.25 2.25 0 012.25 2.25v12M8.25 9h7.5M8.25 12h7.5M8.25 15h3.75" />
+      </svg>
+    ),
+  },
+  {
     name: 'Analytics',
     href: '/analytics',
     icon: (

@@ -6,6 +6,7 @@ import { makeBlandCall } from '@/lib/bland'
 import { makeRetellCall } from '@/lib/retell'
 import { buildSystemPrompt } from '@/lib/industry-config'
 import { createCall, type CallProvider } from '@/lib/call-state'
+import { formatSalesforceContextForPrompt, lookupSalesforceRecords } from '@/lib/salesforce'
 
 const SUPPORTED_PROVIDERS: CallProvider[] = ['twilio', 'vapi', 'bland', 'retell']
 
@@ -33,11 +34,24 @@ export async function POST(request: NextRequest) {
     const effectiveName = agentName || agent.name
     const effectiveGreeting = customGreeting || agent.greeting
 
-    const systemPrompt = buildSystemPrompt({
+    let systemPrompt = buildSystemPrompt({
       name: effectiveName,
       industry: agent.industry,
       systemPrompt: agent.systemPrompt,
     }, conversationGoal)
+
+    const salesforceContext = await lookupSalesforceRecords({
+      orgId: agent.orgId,
+      phone: phoneNumber,
+    }).catch((error) => {
+      console.error('Salesforce caller lookup failed:', error)
+      return null
+    })
+
+    const salesforcePrompt = formatSalesforceContextForPrompt(salesforceContext)
+    if (salesforcePrompt) {
+      systemPrompt = `${systemPrompt}\n\n${salesforcePrompt}`
+    }
 
     const webhookBase = process.env.PUBLIC_WEBHOOK_URL
     if (!webhookBase) {
@@ -142,6 +156,7 @@ export async function POST(request: NextRequest) {
     createCall({
       callSid: sid,
       agentId: agent.id,
+      orgId: agent.orgId,
       industry: agent.industry,
       systemPrompt,
       greeting: effectiveGreeting,
@@ -152,6 +167,7 @@ export async function POST(request: NextRequest) {
       provider: callProvider,
       transferNumber,
       workflow: workflowState,
+      salesforceContext,
     })
 
     return NextResponse.json({ callSid: sid, status })

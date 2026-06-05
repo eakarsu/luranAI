@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCall, updateCallStatus, removeCall, addConversationTurn } from '@/lib/call-state'
 import { prisma } from '@/lib/prisma'
+import { syncSalesforceCallOutcome } from '@/lib/salesforce'
 import twilio from 'twilio'
 
 const VAPI_API_KEY = process.env.VAPI_API_KEY
@@ -254,6 +255,31 @@ export async function POST(request: NextRequest) {
         }
       } catch (dbError) {
         console.error('Failed to save CallLog:', dbError)
+      }
+
+      if (!call.salesforceSyncedAt) {
+        const transcriptText = transcript.length > 0
+          ? transcript.map(t => `${t.role === 'user' ? 'Caller' : 'AI'}: ${t.content}`).join('\n')
+          : call.conversationHistory.length > 0
+            ? call.conversationHistory.map(t => `${t.role === 'user' ? 'Caller' : 'AI'}: ${t.content}`).join('\n')
+            : null
+        const duration = Math.round((Date.now() - call.startedAt) / 1000)
+        const salesforceResult = await syncSalesforceCallOutcome({
+          orgId: call.orgId,
+          phoneNumber: call.phoneNumber,
+          callSid,
+          provider,
+          outcome: 'completed',
+          duration,
+          transcript: transcriptText,
+          conversationGoal: call.conversationGoal,
+          industry: call.industry,
+          existingContext: call.salesforceContext as any,
+        })
+        call.salesforceSyncedAt = Date.now()
+        if (salesforceResult.enabled) {
+          console.log('Salesforce call sync result:', salesforceResult)
+        }
       }
     }
 

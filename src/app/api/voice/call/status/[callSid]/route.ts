@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCall, updateCallStatus, addConversationTurn, removeCall } from '@/lib/call-state'
+import { getCall, updateCallStatus, addConversationTurn, removeCall, type ActiveCall } from '@/lib/call-state'
 import { prisma } from '@/lib/prisma'
 import { mapBlandStatus } from '@/lib/bland'
 import { getRetellCallStatus, mapRetellStatus } from '@/lib/retell'
 import { getVapiCallStatus, mapVapiStatus } from '@/lib/vapi'
+import { syncSalesforceCallOutcome } from '@/lib/salesforce'
 import twilio from 'twilio'
 
 async function pollBlandStatus(callId: string) {
@@ -50,6 +51,34 @@ function isVapiFailureReason(endedReason?: string | null) {
     endedReason === 'assistant-request-returned-invalid-assistant' ||
     endedReason === 'assistant-request-returned-no-assistant'
   )
+}
+
+async function syncSalesforceFromCall(params: {
+  call: ActiveCall
+  callSid: string
+  outcome: string
+  duration: number
+  transcriptText?: string | null
+}) {
+  const { call, callSid, outcome, duration, transcriptText } = params
+  if (call.salesforceSyncedAt) return
+
+  const result = await syncSalesforceCallOutcome({
+    orgId: call.orgId,
+    phoneNumber: call.phoneNumber,
+    callSid,
+    provider: call.provider,
+    outcome,
+    duration,
+    transcript: transcriptText,
+    conversationGoal: call.conversationGoal,
+    industry: call.industry,
+    existingContext: call.salesforceContext as any,
+  })
+  call.salesforceSyncedAt = Date.now()
+  if (result.enabled) {
+    console.log('Salesforce call sync result:', result)
+  }
 }
 
 export async function GET(
@@ -128,6 +157,13 @@ export async function GET(
             })
             console.log(`Twilio CallLog saved from poll: ${phoneNumber}, ${duration}s`)
           }
+          await syncSalesforceFromCall({
+            call,
+            callSid,
+            outcome: twilioData.status === 'completed' ? 'completed' : twilioData.status,
+            duration,
+            transcriptText,
+          })
         } catch (dbError) {
           console.error('Failed to save Twilio CallLog from poll:', dbError)
         }
@@ -232,6 +268,13 @@ export async function GET(
               },
             })
           }
+          await syncSalesforceFromCall({
+            call,
+            callSid,
+            outcome: isVapiFailureReason(vapiData.endedReason) ? 'failed' : 'completed',
+            duration,
+            transcriptText,
+          })
         } catch (dbError) {
           console.error('Failed to save Vapi CallLog from poll:', dbError)
         }
@@ -320,6 +363,13 @@ export async function GET(
               },
             })
           }
+          await syncSalesforceFromCall({
+            call,
+            callSid,
+            outcome: 'completed',
+            duration,
+            transcriptText,
+          })
         } catch (dbError) {
           console.error('Failed to save Bland CallLog from poll:', dbError)
         }
@@ -400,6 +450,13 @@ export async function GET(
               },
             })
           }
+          await syncSalesforceFromCall({
+            call,
+            callSid,
+            outcome: mappedStatus,
+            duration,
+            transcriptText,
+          })
         } catch (dbError) {
           console.error('Failed to save Retell CallLog from poll:', dbError)
         }
