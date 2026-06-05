@@ -10,15 +10,25 @@ export async function callOpenRouter(
   maxTokens: number = 1024,
   temperature: number = 0.7
 ) {
+  const apiKey = process.env.OPENROUTER_API_KEY?.trim()
+  const model = process.env.OPENROUTER_MODEL?.trim()
+
+  if (!isOpenRouterConfigured()) {
+    throw new Error('OpenRouter API key is not configured. Set OPENROUTER_API_KEY in .env and restart the dev server.')
+  }
+  if (!model) {
+    throw new Error('OpenRouter model is not configured. Set OPENROUTER_MODEL in .env and restart the dev server.')
+  }
+
   const response = await fetch(OPENROUTER_API_URL, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
       'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
     },
     body: JSON.stringify({
-      model: 'anthropic/claude-haiku-4.5',
+      model,
       messages,
       max_tokens: maxTokens,
       temperature,
@@ -161,8 +171,12 @@ Be candid but constructive.` },
 // Apply pass 4 helpers
 
 export function isOpenRouterConfigured(): boolean {
-  const key = process.env.OPENROUTER_API_KEY
-  return !!key && key !== 'your-openrouter-key-here'
+  const key = process.env.OPENROUTER_API_KEY?.trim()
+  return Boolean(
+    key &&
+    key !== 'your-openrouter-key-here' &&
+    key !== 'your-openrouter-api-key-here'
+  )
 }
 
 export async function translateMessage(

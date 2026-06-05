@@ -22,6 +22,135 @@ const aiFunctions = [
   { value: 'summarize', label: 'Summarize', endpoint: '/api/ai/summarize' },
 ]
 
+const sampleInputs = [
+  {
+    label: 'Dental Call',
+    aiFunction: 'voice',
+    prompt: "I'd like to schedule a dental cleaning next week, preferably after 3pm.",
+    context: 'BrightSmile Dental. Returning patient, last cleaning was 6 months ago. Offer Tuesday 3:30pm or Thursday 4:15pm with Dr. Lee.',
+  },
+  {
+    label: 'Emergency Triage',
+    aiFunction: 'voice',
+    prompt: 'My child chipped a tooth and it is bleeding. Can someone see us today?',
+    context: 'BrightSmile Kids Dental. Same-day emergency slots are held at 11:30am and 3:45pm. If severe bleeding, swelling, fever, or trouble breathing, advise urgent medical care.',
+  },
+  {
+    label: 'Real Estate Lead',
+    aiFunction: 'voice',
+    prompt: 'I am relocating next month and need a three-bedroom home near good schools.',
+    context: 'Northstar Realty. Buyer has not been pre-approved yet. Service areas: Austin, Cedar Park, Round Rock. Goal: collect budget, move date, financing status, and preferred neighborhoods.',
+  },
+  {
+    label: 'Restaurant Chat',
+    aiFunction: 'chat',
+    prompt: 'Do you have a table for four tonight around 7:30, and can one person eat gluten-free?',
+    context: 'Luna Bistro. Open 5pm-11pm. Gluten-free pasta and risotto available. Patio and indoor seating. Reservations accepted by phone or SMS.',
+  },
+  {
+    label: 'Hotel Concierge',
+    aiFunction: 'chat',
+    prompt: 'Can I get late checkout and airport transportation tomorrow morning?',
+    context: 'Harbor View Hotel. Standard checkout is 11am. Late checkout to 1pm is complimentary when available; 3pm costs $45. Airport shuttle runs every 30 minutes from 5am to 11pm.',
+  },
+  {
+    label: 'Auto Service',
+    aiFunction: 'chat',
+    prompt: 'My check engine light came on and the car shakes when I accelerate.',
+    context: 'Metro Auto Service. Open Mon-Sat 7am-6pm. Diagnostic fee is $129 and can be applied to repair. For unsafe driving symptoms, recommend towing instead of driving.',
+  },
+  {
+    label: 'Sales Follow-up',
+    aiFunction: 'email',
+    prompt: 'Follow up after a qualified demo call and propose next steps.',
+    context: 'Prospect: Maya Chen, Northstar Dental Group. Interested in AI appointment reminders and call logging. Budget approved, wants implementation timeline and pricing.',
+  },
+  {
+    label: 'No-show Email',
+    aiFunction: 'email',
+    prompt: 'Send a polite no-show follow-up and make it easy to reschedule.',
+    context: 'Patient: Jordan Park. Missed dental cleaning today at 10:00am. First no-show in 18 months. Practice policy: friendly reminder, no fee this time, offer online booking link.',
+  },
+  {
+    label: 'Proposal Email',
+    aiFunction: 'email',
+    prompt: 'Send a proposal recap after a hotel event-planning call.',
+    context: 'Client: Priya Shah, Acme Finance. Needs 80-person leadership retreat, July 10-12, ballroom, breakfast, AV, and 35 room block. Proposal due Friday.',
+  },
+  {
+    label: 'SMS Reminder',
+    aiFunction: 'sms',
+    prompt: 'Appointment reminder with confirmation request',
+    context: 'Patient Jordan Park has a dental cleaning tomorrow at 2:00pm with Dr. Lee. Ask them to reply YES to confirm or call to reschedule.',
+  },
+  {
+    label: 'Payment SMS',
+    aiFunction: 'sms',
+    prompt: 'Friendly payment plan reminder',
+    context: 'Customer Alex Rivera has a payment plan installment of $233 due Friday. Keep it respectful, include a payment link placeholder, and offer help if they need to discuss options.',
+  },
+  {
+    label: 'Promo SMS',
+    aiFunction: 'sms',
+    prompt: 'Limited-time whitening promotion for existing dental patients',
+    context: 'BrightSmile Dental. June whitening promotion: $99 for existing patients, normally $149. Include opt-out language. Avoid sounding spammy.',
+  },
+  {
+    label: 'Retention Plan',
+    aiFunction: 'general',
+    prompt: 'Create a 30-day retention outreach plan for customers who have not replied after a demo.',
+    context: 'B2B SaaS voice AI product. Audience: dental offices and clinics. Channels available: email, SMS, phone call, and Salesforce task creation.',
+  },
+  {
+    label: 'Deep Prompt',
+    aiFunction: 'general',
+    prompt: 'Analyze this customer communication workflow in depth and produce an implementation-ready plan. Include goals, assumptions, required data fields, automation steps, AI decision points, Salesforce updates, risk handling, success metrics, and a short rollout checklist.',
+    context: 'Scenario: Luran AI handles inbound and outbound calls for a multi-location dental group. The AI should qualify callers, look up contacts, create or update Salesforce leads, log call summaries, route urgent issues to a human, schedule follow-ups, and attribute each lead to the correct campaign/source. The output should be specific enough for product, engineering, and sales operations to use.',
+  },
+  {
+    label: 'Call Script',
+    aiFunction: 'general',
+    prompt: 'Write a concise outbound call script for reactivating cold leads.',
+    context: 'Leads downloaded a guide about AI appointment scheduling 60-90 days ago. Goal: book a 20-minute demo without sounding pushy.',
+  },
+  {
+    label: 'Angry Customer',
+    aiFunction: 'sentiment',
+    prompt: "I called three times and nobody followed up. This is wasting my time, and I'm ready to cancel unless someone fixes this today.",
+    context: '',
+  },
+  {
+    label: 'Happy Customer',
+    aiFunction: 'sentiment',
+    prompt: 'Thanks for getting me scheduled so quickly. The reminder texts were helpful, and the front desk was very kind.',
+    context: '',
+  },
+  {
+    label: 'Mixed Feedback',
+    aiFunction: 'sentiment',
+    prompt: 'The technician was excellent, but I had to wait 45 minutes and nobody explained the delay until I asked.',
+    context: '',
+  },
+  {
+    label: 'Call Summary',
+    aiFunction: 'summarize',
+    prompt: "Caller: Hi, I missed a call about my appointment.\nAI: I can help with that. Can I confirm your name?\nCaller: Maya Chen.\nAI: Your dental cleaning is tomorrow at 2pm with Dr. Lee.\nCaller: I need to move it to next week.\nAI: We have Tuesday at 3:30pm or Thursday at 4:15pm.\nCaller: Thursday works.\nAI: Great, I moved your appointment to Thursday at 4:15pm.",
+    context: '',
+  },
+  {
+    label: 'Sales Summary',
+    aiFunction: 'summarize',
+    prompt: "Rep: Thanks for taking the demo call today.\nProspect: We need better call summaries and Salesforce updates.\nRep: You mentioned 12 locations and around 2,000 calls per month.\nProspect: Correct, and missed follow-ups are our biggest issue.\nRep: Next step is a pricing proposal and implementation timeline.\nProspect: Send it by Friday and include Salesforce task logging.",
+    context: '',
+  },
+  {
+    label: 'Support Summary',
+    aiFunction: 'summarize',
+    prompt: "Customer: My reminder campaign sent twice.\nAgent: I see two active workflows with the same audience.\nCustomer: Can you stop it from happening again?\nAgent: I paused the duplicate workflow and added an exclusion rule.\nCustomer: Please send me what changed.\nAgent: I will email a summary and monitor the next send.",
+    context: '',
+  },
+]
+
 export default function AIPlaygroundPage() {
   const [prompt, setPrompt] = useState('')
   const [context, setContext] = useState('')
@@ -106,6 +235,13 @@ export default function AIPlaygroundPage() {
     if (fn) setSelectedFunction(fn.value)
   }
 
+  const loadSample = (sample: typeof sampleInputs[number]) => {
+    setSelectedFunction(sample.aiFunction)
+    setPrompt(sample.prompt)
+    setContext(sample.context)
+    setResponse(null)
+  }
+
   return (
     <div>
       <div className="mb-6">
@@ -128,6 +264,26 @@ export default function AIPlaygroundPage() {
                     <option key={fn.value} value={fn.value}>{fn.label}</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Sample Inputs</label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+                  {sampleInputs.map((sample) => (
+                    <button
+                      key={sample.label}
+                      type="button"
+                      onClick={() => loadSample(sample)}
+                      disabled={loading}
+                      className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-left text-sm font-medium text-gray-700 transition-colors hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700 disabled:opacity-50"
+                    >
+                      {sample.label}
+                      <span className="mt-0.5 block text-xs font-normal text-gray-400">
+                        {aiFunctions.find((fn) => fn.value === sample.aiFunction)?.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>

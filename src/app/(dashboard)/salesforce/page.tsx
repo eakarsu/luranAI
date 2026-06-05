@@ -658,6 +658,7 @@ export default function SalesforcePage() {
   const [search, setSearch] = useState('')
   const [selectedRecord, setSelectedRecord] = useState<FeatureRecord | null>(null)
   const [draft, setDraft] = useState<Record<string, string>>({})
+  const [isEditingRecord, setIsEditingRecord] = useState(false)
 
   const selectedMeta = capabilities.find((item) => item.key === selectedCapability) || capabilities[1]
   const selectedFields = featureFields[selectedCapability]
@@ -677,11 +678,13 @@ export default function SalesforcePage() {
     setSearch('')
     setSelectedRecord(null)
     setDraft({})
+    setIsEditingRecord(false)
   }
 
   function openRecord(record: FeatureRecord) {
     setSelectedRecord(record)
     setDraft({ ...record.fields })
+    setIsEditingRecord(false)
   }
 
   function addRecord() {
@@ -692,19 +695,22 @@ export default function SalesforcePage() {
       ...prev,
       [selectedCapability]: [record, ...prev[selectedCapability]],
     }))
-    openRecord(record)
+    setSelectedRecord(record)
+    setDraft({ ...record.fields })
+    setIsEditingRecord(true)
   }
 
   function saveRecord() {
     if (!selectedRecord) return
+    const updatedRecord = { ...selectedRecord, fields: { ...draft } }
     setRecords((prev) => ({
       ...prev,
       [selectedCapability]: prev[selectedCapability].map((record) =>
-        record.id === selectedRecord.id ? { ...record, fields: { ...draft } } : record
+        record.id === selectedRecord.id ? updatedRecord : record
       ),
     }))
-    setSelectedRecord(null)
-    setDraft({})
+    setSelectedRecord(updatedRecord)
+    setIsEditingRecord(false)
   }
 
   function deleteRecord() {
@@ -715,6 +721,7 @@ export default function SalesforcePage() {
     }))
     setSelectedRecord(null)
     setDraft({})
+    setIsEditingRecord(false)
   }
 
   return (
@@ -750,7 +757,7 @@ export default function SalesforcePage() {
           <div>
             <h2 className="text-base font-semibold text-gray-900">{selectedMeta.label} Records</h2>
             <p className="mt-1 text-sm text-gray-500">
-              Search the shown fields, click a record to edit it in a centered popup, or delete it from the modal.
+              Search the shown fields, click a record to view all details in a centered popup, then edit or delete it.
             </p>
           </div>
           <div className="flex w-full flex-col gap-2 sm:flex-row xl:w-auto">
@@ -845,32 +852,47 @@ export default function SalesforcePage() {
         onClose={() => {
           setSelectedRecord(null)
           setDraft({})
+          setIsEditingRecord(false)
         }}
         title={selectedRecord ? `${selectedMeta.label}: ${selectedRecord.id}` : selectedMeta.label}
+        maxWidthClass="max-w-4xl"
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3">
-            {selectedFields.map((field) => (
-              <label key={field} className="block">
-                <span className="text-xs font-medium text-gray-600">{field}</span>
-                {isLongField(field) ? (
-                  <textarea
-                    value={draft[field] || ''}
-                    onChange={(event) => setDraft((prev) => ({ ...prev, [field]: event.target.value }))}
-                    rows={4}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    value={draft[field] || ''}
-                    onChange={(event) => setDraft((prev) => ({ ...prev, [field]: event.target.value }))}
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
-                  />
-                )}
-              </label>
-            ))}
-          </div>
+          {isEditingRecord ? (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {selectedFields.map((field) => (
+                <label key={field} className={`block ${isLongField(field) ? 'md:col-span-2' : ''}`}>
+                  <span className="text-xs font-medium text-gray-600">{field}</span>
+                  {isLongField(field) ? (
+                    <textarea
+                      value={draft[field] || ''}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, [field]: event.target.value }))}
+                      rows={4}
+                      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={draft[field] || ''}
+                      onChange={(event) => setDraft((prev) => ({ ...prev, [field]: event.target.value }))}
+                      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                    />
+                  )}
+                </label>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {selectedFields.map((field) => (
+                <div key={field} className={`rounded-lg border border-gray-200 bg-gray-50 p-3 ${isLongField(field) ? 'md:col-span-2' : ''}`}>
+                  <div className="text-xs font-medium uppercase tracking-wide text-gray-500">{field}</div>
+                  <div className="mt-1 whitespace-pre-wrap break-words text-sm text-gray-900">
+                    {selectedRecord?.fields[field] || '-'}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex flex-col-reverse gap-2 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
             <button
               type="button"
@@ -883,20 +905,36 @@ export default function SalesforcePage() {
               <button
                 type="button"
                 onClick={() => {
-                  setSelectedRecord(null)
-                  setDraft({})
+                  if (isEditingRecord && selectedRecord) {
+                    setDraft({ ...selectedRecord.fields })
+                    setIsEditingRecord(false)
+                  } else {
+                    setSelectedRecord(null)
+                    setDraft({})
+                    setIsEditingRecord(false)
+                  }
                 }}
                 className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                Cancel
+                {isEditingRecord ? 'Cancel' : 'Close'}
               </button>
-              <button
-                type="button"
-                onClick={saveRecord}
-                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-              >
-                Save
-              </button>
+              {isEditingRecord ? (
+                <button
+                  type="button"
+                  onClick={saveRecord}
+                  className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+                >
+                  Save
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingRecord(true)}
+                  className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+                >
+                  Edit
+                </button>
+              )}
             </div>
           </div>
         </div>
