@@ -4,12 +4,13 @@ import { getTenantContext } from '@/lib/tenant'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const tenant = await getTenantContext()
     const chatAgent = await prisma.chatAgent.findFirst({
-      where: { id: params.id, ...(tenant ? { orgId: tenant.orgId } : {}) },
+      where: { id: id, ...(tenant ? { orgId: tenant.orgId } : {}) },
     })
     if (!chatAgent) {
       return NextResponse.json({ error: 'Chat agent not found' }, { status: 404 })
@@ -23,19 +24,20 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const tenant = await getTenantContext()
     const existing = await prisma.chatAgent.findFirst({
-      where: { id: params.id, ...(tenant ? { orgId: tenant.orgId } : {}) },
+      where: { id: id, ...(tenant ? { orgId: tenant.orgId } : {}) },
     })
     if (!existing) {
       return NextResponse.json({ error: 'Chat agent not found' }, { status: 404 })
     }
     const body = await request.json()
     const chatAgent = await prisma.chatAgent.update({
-      where: { id: params.id },
+      where: { id: id },
       data: body,
     })
     return NextResponse.json(chatAgent)
@@ -47,17 +49,18 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const tenant = await getTenantContext()
     const existing = await prisma.chatAgent.findFirst({
-      where: { id: params.id, ...(tenant ? { orgId: tenant.orgId } : {}) },
+      where: { id: id, ...(tenant ? { orgId: tenant.orgId } : {}) },
     })
     if (!existing) {
       return NextResponse.json({ error: 'Chat agent not found' }, { status: 404 })
     }
-    await prisma.chatAgent.delete({ where: { id: params.id } })
+    await prisma.chatAgent.delete({ where: { id: id } })
     return NextResponse.json({ message: 'Chat agent deleted successfully' })
   } catch (error) {
     console.error('Error deleting chat agent:', error)

@@ -7,11 +7,16 @@ import { makeRetellCall } from '@/lib/retell'
 import { buildSystemPrompt } from '@/lib/industry-config'
 import { createCall, type CallProvider } from '@/lib/call-state'
 import { formatSalesforceContextForPrompt, lookupSalesforceRecords } from '@/lib/salesforce'
+import { getTenantContext } from '@/lib/tenant'
 
 const SUPPORTED_PROVIDERS: CallProvider[] = ['twilio', 'vapi', 'bland', 'retell']
 
 export async function POST(request: NextRequest) {
   try {
+    const tenant = await getTenantContext()
+    if (!tenant) {
+      return NextResponse.json({ error: 'Authentication and organization membership are required' }, { status: 401 })
+    }
     const { agentId, phoneNumber, conversationGoal, agentName, customGreeting, provider = 'twilio' } = await request.json()
     const callProvider = provider as CallProvider
 
@@ -26,7 +31,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch voice agent from database
-    const agent = await prisma.voiceAgent.findUnique({ where: { id: agentId } })
+    const agent = await prisma.voiceAgent.findFirst({
+      where: { id: agentId, orgId: tenant.orgId },
+    })
     if (!agent) {
       return NextResponse.json({ error: 'Voice agent not found' }, { status: 404 })
     }
@@ -119,7 +126,9 @@ export async function POST(request: NextRequest) {
     // Load workflow if agent has one linked
     let workflowState = undefined
     if (agent.workflowId) {
-      const workflow = await prisma.workflow.findUnique({ where: { id: agent.workflowId } })
+      const workflow = await prisma.workflow.findFirst({
+        where: { id: agent.workflowId, orgId: tenant.orgId },
+      })
       if (workflow && workflow.status === 'active') {
         const nodes = workflow.nodes as any[]
         const edges = workflow.edges as any[]
@@ -133,6 +142,7 @@ export async function POST(request: NextRequest) {
             currentNode: triggerNode?.id || nodes[0]?.id || 'trigger',
             state: { variables: workflow.variables || {}, collectedInfo: {} },
             status: 'running',
+            orgId: tenant.orgId,
           },
         })
 

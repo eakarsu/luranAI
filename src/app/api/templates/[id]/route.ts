@@ -3,11 +3,12 @@ import prisma from '@/lib/prisma'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const template = await prisma.template.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
     if (!template) {
       return NextResponse.json({ error: 'Template not found' }, { status: 404 })
@@ -21,12 +22,13 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const body = await request.json()
     const template = await prisma.template.update({
-      where: { id: params.id },
+      where: { id: id },
       data: body,
     })
     return NextResponse.json(template)
@@ -38,11 +40,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     await prisma.template.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
     return NextResponse.json({ message: 'Template deleted successfully' })
   } catch (error) {

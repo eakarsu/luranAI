@@ -4,15 +4,16 @@ import { getUser } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const user = await getUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const org = await prisma.organization.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       include: {
         members: { include: { user: { select: { id: true, name: true, email: true } } } },
         _count: {
@@ -39,22 +40,23 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const user = await getUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const membership = await prisma.orgMember.findUnique({
-      where: { orgId_userId: { orgId: params.id, userId: user.id } },
+      where: { orgId_userId: { orgId: id, userId: user.id } },
     })
     if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
     }
     const body = await request.json()
     const org = await prisma.organization.update({
-      where: { id: params.id },
+      where: { id: id },
       data: body,
     })
     return NextResponse.json(org)
@@ -66,20 +68,21 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const user = await getUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const membership = await prisma.orgMember.findUnique({
-      where: { orgId_userId: { orgId: params.id, userId: user.id } },
+      where: { orgId_userId: { orgId: id, userId: user.id } },
     })
     if (!membership || membership.role !== 'owner') {
       return NextResponse.json({ error: 'Only owners can delete organizations' }, { status: 403 })
     }
-    await prisma.organization.delete({ where: { id: params.id } })
+    await prisma.organization.delete({ where: { id: id } })
     return NextResponse.json({ message: 'Organization deleted' })
   } catch (error) {
     console.error('Error deleting organization:', error)

@@ -3,11 +3,12 @@ import prisma from '@/lib/prisma'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const knowledgeBase = await prisma.knowledgeBase.findUnique({
-      where: { id: params.id },
+      where: { id: id },
     })
     if (!knowledgeBase) {
       return NextResponse.json({ error: 'Knowledge base not found' }, { status: 404 })
@@ -21,12 +22,13 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const body = await request.json()
     const knowledgeBase = await prisma.knowledgeBase.update({
-      where: { id: params.id },
+      where: { id: id },
       data: body,
     })
     return NextResponse.json(knowledgeBase)
@@ -38,11 +40,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     await prisma.knowledgeBase.delete({
-      where: { id: params.id },
+      where: { id: id },
     })
     return NextResponse.json({ message: 'Knowledge base deleted successfully' })
   } catch (error) {

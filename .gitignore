@@ -46,6 +46,7 @@ out/
 .vite/
 .turbo/
 *.log
+*.tsbuildinfo
 
 # OS / IDE
 .DS_Store
@@ -81,6 +82,7 @@ htmlcov/
 # --- secrets: never commit ---
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 *.p12

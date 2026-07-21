@@ -4,12 +4,13 @@ import { getTenantContext } from '@/lib/tenant'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const tenant = await getTenantContext()
     const voiceAgent = await prisma.voiceAgent.findFirst({
-      where: { id: params.id, ...(tenant ? { orgId: tenant.orgId } : {}) },
+      where: { id: id, ...(tenant ? { orgId: tenant.orgId } : {}) },
     })
     if (!voiceAgent) {
       return NextResponse.json({ error: 'Voice agent not found' }, { status: 404 })
@@ -23,19 +24,20 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const tenant = await getTenantContext()
     const existing = await prisma.voiceAgent.findFirst({
-      where: { id: params.id, ...(tenant ? { orgId: tenant.orgId } : {}) },
+      where: { id: id, ...(tenant ? { orgId: tenant.orgId } : {}) },
     })
     if (!existing) {
       return NextResponse.json({ error: 'Voice agent not found' }, { status: 404 })
     }
     const body = await request.json()
     const voiceAgent = await prisma.voiceAgent.update({
-      where: { id: params.id },
+      where: { id: id },
       data: body,
     })
     return NextResponse.json(voiceAgent)
@@ -47,17 +49,18 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const tenant = await getTenantContext()
     const existing = await prisma.voiceAgent.findFirst({
-      where: { id: params.id, ...(tenant ? { orgId: tenant.orgId } : {}) },
+      where: { id: id, ...(tenant ? { orgId: tenant.orgId } : {}) },
     })
     if (!existing) {
       return NextResponse.json({ error: 'Voice agent not found' }, { status: 404 })
     }
-    await prisma.voiceAgent.delete({ where: { id: params.id } })
+    await prisma.voiceAgent.delete({ where: { id: id } })
     return NextResponse.json({ message: 'Voice agent deleted successfully' })
   } catch (error) {
     console.error('Error deleting voice agent:', error)

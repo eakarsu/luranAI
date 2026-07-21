@@ -1,82 +1,33 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-echo "Starting Luran AI..."
-echo "========================"
+set -euo pipefail
 
-# Kill any processes on commonly used ports
-echo "Cleaning up ports..."
-for port in 3000 3001; do
-  pids=$(lsof -ti:$port 2>/dev/null)
-  if [ -n "$pids" ]; then
-    echo "$pids" | xargs kill -9 2>/dev/null
-    echo "Port $port cleared"
-  fi
-done
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+if [[ "${NODE_ENV:-}" == test && -n "${RUNTIME_PROJECT_SOURCE:-}" ]]; then
+  ROOT="$RUNTIME_PROJECT_SOURCE"
+fi
+cd "$ROOT"
 
-# Create .env if not exists
-if [ ! -f .env ]; then
-  echo "Creating .env file..."
-  cat > .env << 'EOF'
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/luranai?schema=public"
-OPENROUTER_API_KEY="your-openrouter-api-key-here"
-JWT_SECRET="luranai-jwt-secret-key-2024"
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-PUBLIC_WEBHOOK_URL="https://your-ngrok-url.ngrok-free.app"
-TWILIO_ACCOUNT_SID=""
-TWILIO_AUTH_TOKEN=""
-TWILIO_PHONE_NUMBER=""
-TWILIO_VOICE_NUMBER=""
-VAPI_API_KEY=""
-VAPI_PHONE_NUMBER_ID=""
-BLAND_API_KEY=""
-RETELL_API_KEY=""
-RETELL_FROM_NUMBER=""
-RETELL_AGENT_ID=""
-EOF
-  echo ".env created — update it with your real keys"
-else
-  echo ".env already exists"
+PORT="${PORT:-3000}"
+
+if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+  echo "Node.js and npm are required." >&2
+  exit 1
 fi
 
-# Install dependencies
-echo "Installing dependencies..."
-npm install
+if [ ! -x node_modules/.bin/next ] || [ ! -x node_modules/.bin/prisma ]; then
+  echo "Dependencies are missing. Run 'npm ci' explicitly before startup." >&2
+  exit 1
+fi
 
-# Generate Prisma client
-echo "Generating Prisma client..."
-npx prisma generate
+if command -v lsof >/dev/null 2>&1 && lsof -tiTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "Port $PORT is already in use. Stop that process or set PORT to another value." >&2
+  exit 1
+fi
 
-# Ensure PostgreSQL is running
-echo "Starting PostgreSQL..."
-brew services start postgresql@14 2>/dev/null || brew services start postgresql 2>/dev/null || echo "Please start PostgreSQL manually"
+node scripts/validate-config.js
+npm run prisma:validate
 
-# Wait for PostgreSQL to be ready
-echo "Waiting for PostgreSQL to be ready..."
-for i in $(seq 1 30); do
-  if pg_isready -q 2>/dev/null; then
-    echo "PostgreSQL is ready"
-    break
-  fi
-  if [ $i -eq 30 ]; then
-    echo "ERROR: PostgreSQL failed to start after 30 seconds"
-    exit 1
-  fi
-  sleep 1
-done
-
-# Push database schema
-echo "Pushing database schema..."
-npx prisma db push --accept-data-loss
-
-# Seed the database
-echo "Seeding database..."
-npx prisma db seed 2>/dev/null || echo "Seed may have already run"
-
-# Start dev server with hot reloading
-echo ""
-echo "========================"
-echo "Dev server starting on http://localhost:3000"
-echo "Hot reloading enabled — code changes apply automatically"
-echo "Press Ctrl+C to stop"
-echo "========================"
-exec npm run dev
+echo "Starting LuranAI development server on http://localhost:$PORT"
+echo "Database schema changes and seed data are never applied by this launcher."
+exec npm run dev -- --port "$PORT"

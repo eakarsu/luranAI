@@ -4,12 +4,13 @@ import { getTenantContext } from '@/lib/tenant'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const tenant = await getTenantContext()
     const callLog = await prisma.callLog.findFirst({
-      where: { id: params.id, ...(tenant ? { orgId: tenant.orgId } : {}) },
+      where: { id: id, ...(tenant ? { orgId: tenant.orgId } : {}) },
       include: {
         voiceAgent: true,
         contact: true,
@@ -27,12 +28,13 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const tenant = await getTenantContext()
     const existing = await prisma.callLog.findFirst({
-      where: { id: params.id, ...(tenant ? { orgId: tenant.orgId } : {}) },
+      where: { id: id, ...(tenant ? { orgId: tenant.orgId } : {}) },
     })
     if (!existing) {
       return NextResponse.json({ error: 'Call log not found' }, { status: 404 })
@@ -40,7 +42,7 @@ export async function PUT(
 
     const body = await request.json()
     const callLog = await prisma.callLog.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         duration: Number(body.duration) || 0,
         outcome: body.outcome,
@@ -62,18 +64,19 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const tenant = await getTenantContext()
     const existing = await prisma.callLog.findFirst({
-      where: { id: params.id, ...(tenant ? { orgId: tenant.orgId } : {}) },
+      where: { id: id, ...(tenant ? { orgId: tenant.orgId } : {}) },
     })
     if (!existing) {
       return NextResponse.json({ error: 'Call log not found' }, { status: 404 })
     }
 
-    await prisma.callLog.delete({ where: { id: params.id } })
+    await prisma.callLog.delete({ where: { id: id } })
     return NextResponse.json({ message: 'Call log deleted successfully' })
   } catch (error) {
     console.error('Error deleting call log:', error)

@@ -4,11 +4,12 @@ import { getUser } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const members = await prisma.orgMember.findMany({
-      where: { orgId: params.id },
+      where: { orgId: id },
       include: { user: { select: { id: true, name: true, email: true } } },
       orderBy: { createdAt: 'asc' },
     })
@@ -21,15 +22,16 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const user = await getUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const membership = await prisma.orgMember.findUnique({
-      where: { orgId_userId: { orgId: params.id, userId: user.id } },
+      where: { orgId_userId: { orgId: id, userId: user.id } },
     })
     if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
@@ -40,13 +42,13 @@ export async function POST(
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
     const existing = await prisma.orgMember.findUnique({
-      where: { orgId_userId: { orgId: params.id, userId: targetUser.id } },
+      where: { orgId_userId: { orgId: id, userId: targetUser.id } },
     })
     if (existing) {
       return NextResponse.json({ error: 'User is already a member' }, { status: 409 })
     }
     const member = await prisma.orgMember.create({
-      data: { orgId: params.id, userId: targetUser.id, role },
+      data: { orgId: id, userId: targetUser.id, role },
       include: { user: { select: { id: true, name: true, email: true } } },
     })
     return NextResponse.json(member, { status: 201 })
@@ -58,8 +60,9 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const user = await getUser()
     if (!user) {
@@ -67,7 +70,7 @@ export async function DELETE(
     }
     const { userId } = await request.json()
     const membership = await prisma.orgMember.findUnique({
-      where: { orgId_userId: { orgId: params.id, userId: user.id } },
+      where: { orgId_userId: { orgId: id, userId: user.id } },
     })
     if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
@@ -76,7 +79,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Cannot remove yourself' }, { status: 400 })
     }
     await prisma.orgMember.delete({
-      where: { orgId_userId: { orgId: params.id, userId } },
+      where: { orgId_userId: { orgId: id, userId } },
     })
     return NextResponse.json({ message: 'Member removed' })
   } catch (error) {

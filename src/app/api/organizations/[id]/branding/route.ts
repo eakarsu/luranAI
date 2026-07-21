@@ -4,11 +4,12 @@ import { getUser } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const org = await prisma.organization.findUnique({
-      where: { id: params.id },
+      where: { id: id },
       select: {
         id: true,
         brandName: true,
@@ -35,15 +36,16 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const user = await getUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const membership = await prisma.orgMember.findUnique({
-      where: { orgId_userId: { orgId: params.id, userId: user.id } },
+      where: { orgId_userId: { orgId: id, userId: user.id } },
     })
     if (!membership || (membership.role !== 'owner' && membership.role !== 'admin')) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 })
@@ -58,7 +60,7 @@ export async function PUT(
       if (field in body) data[field] = body[field]
     }
     const org = await prisma.organization.update({
-      where: { id: params.id },
+      where: { id: id },
       data,
     })
     return NextResponse.json(org)
