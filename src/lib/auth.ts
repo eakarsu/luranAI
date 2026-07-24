@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import { cookies } from 'next/headers'
+import prisma from '@/lib/prisma'
 
 const JWT_ISSUER = 'luranai'
 const JWT_AUDIENCE = 'luranai-web'
@@ -59,5 +60,12 @@ export async function getUser() {
   const cookieStore = await cookies()
   const token = cookieStore.get('token')?.value
   if (!token) return null
-  return verifyToken(token)
+  const decoded = verifyToken(token)
+  if (!decoded) return null
+  const user = await prisma.user.findUnique({
+    where: { id: decoded.id },
+    select: { id: true, email: true, name: true },
+  })
+  if (!user || user.email !== decoded.email) return null
+  return { ...user, orgId: decoded.orgId }
 }

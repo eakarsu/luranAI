@@ -140,6 +140,20 @@ model User {
   memberships OrgMember[]
 }
 
+model RuntimeAiResult {
+  id              String   @id @default(cuid())
+  userId          String
+  prompt          String   @db.Text
+  content         String   @db.Text
+  provider        String
+  model           String
+  providerReceipt Json
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("runtime_ai_results")
+}
+
 model VoiceAgent {
   id              String   @id @default(cuid())
   name            String
