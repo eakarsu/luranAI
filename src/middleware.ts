@@ -79,6 +79,7 @@ export async function middleware(request: NextRequest) {
   if (
     pathname === '/api/auth/login' ||
     pathname === '/api/auth/logout' ||
+    pathname === '/api/auth/demo-credentials' ||
     PUBLIC_PROVIDER_PATHS.has(pathname) ||
     PUBLIC_PROVIDER_PREFIXES.some((path) => pathname.startsWith(path))
   ) {

@@ -9,10 +9,16 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleAutoFill = () => {
-    setEmail('demo@luranai.com')
-    setPassword('demo123')
+  const handleAutoFill = async () => {
     setError('')
+    const response = await fetch('/api/auth/demo-credentials', { cache: 'no-store' })
+    if (!response.ok) {
+      setError('Demo credentials are unavailable')
+      return
+    }
+    const credentials = await response.json()
+    setEmail(credentials.email)
+    setPassword(credentials.password)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -83,7 +89,7 @@ export default function LoginPage() {
               onClick={handleAutoFill}
               className="w-full bg-gray-100 text-gray-700 py-2.5 rounded-lg hover:bg-gray-200 transition-colors font-medium border border-gray-300"
             >
-              Auto-fill Demo Credentials
+              Auto Fill Demo Credentials
             </button>
           </div>
         </div>
