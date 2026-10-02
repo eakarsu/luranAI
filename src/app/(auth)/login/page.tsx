@@ -19,6 +19,9 @@ export default function LoginPage() {
     const credentials = await response.json()
     setEmail(credentials.email)
     setPassword(credentials.password)
+    const __login = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: credentials.email, password: credentials.password }) });
+    if (!__login.ok) { setError('Invalid email or password'); return; }
+    window.location.assign('/');
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
