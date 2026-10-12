@@ -1,8 +1,13 @@
 'use client'
+import { useRef as useNativeDemoLoginRef, useState as useNativeDemoLoginState } from 'react';
+
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
+const nativeDemoAuthRequestLock = useNativeDemoLoginRef(false), demoCredentialRequestLock = useNativeDemoLoginRef(false);
+const [nativeDemoLoginPending, setNativeDemoLoginPending] = useNativeDemoLoginState(false);
+
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -10,6 +15,11 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   const handleAutoFill = async () => {
+
+if (nativeDemoAuthRequestLock.current) return;
+nativeDemoAuthRequestLock.current = true; setNativeDemoLoginPending(true);
+try {
+
     setError('')
     const response = await fetch('/api/auth/demo-credentials', { cache: 'no-store' })
     if (!response.ok) {
@@ -23,10 +33,17 @@ export default function LoginPage() {
     const __login = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: credentials.email, password: credentials.password }) });
     if (!__login.ok) { setError('Invalid email or password'); return; }
     window.location.assign('/');
-  }
+
+} catch (nativeDemoFailure) { setError('Unable to sign in. Check your credentials or connection and try again.'); } finally { setLoading(false); nativeDemoAuthRequestLock.current = false; setNativeDemoLoginPending(false); }
+}
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+e.preventDefault()
+if (nativeDemoAuthRequestLock.current) return;
+nativeDemoAuthRequestLock.current = true; setNativeDemoLoginPending(true);
+try {
+
+
     setLoading(true)
     setError('')
     try {
@@ -43,7 +60,9 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
-  }
+
+} catch (nativeDemoFailure) { setError('Unable to sign in. Check your credentials or connection and try again.'); } finally { setLoading(false); nativeDemoAuthRequestLock.current = false; setNativeDemoLoginPending(false); }
+}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-900 via-primary-800 to-indigo-900 flex items-center justify-center p-4">
@@ -90,10 +109,10 @@ export default function LoginPage() {
           </form>
           <div className="mt-4">
             <button
-              onClick={handleAutoFill}
-              className="w-full bg-gray-100 text-gray-700 py-2.5 rounded-lg hover:bg-gray-200 transition-colors font-medium border border-gray-300"
+              onClick={async () => { if (demoCredentialRequestLock.current || nativeDemoAuthRequestLock.current) return; demoCredentialRequestLock.current = true; setNativeDemoLoginPending(true); try { await (handleAutoFill)();   } finally { demoCredentialRequestLock.current = false; setNativeDemoLoginPending(false); } }}
+              className="w-full bg-gray-100 text-gray-700 py-2.5 rounded-lg hover:bg-gray-200 transition-colors font-medium border border-gray-300" type="button" disabled={nativeDemoLoginPending}
             >
-              Auto Fill Demo Credentials
+              Log In as Demo
             </button>
           </div>
         </div>

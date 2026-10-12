@@ -1,4 +1,6 @@
 'use client'
+import FullAIExamples, { useFullAIExamples } from "../../../../components/FullAIExamples";
+
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
@@ -33,6 +35,8 @@ interface SmsCampaign {
 }
 
 export default function SmsCampaignDetailPage() {
+  const fullAIExamples = useFullAIExamples();
+
   const router = useRouter()
   const params = useParams()
   const id = params.id as string
@@ -156,7 +160,7 @@ export default function SmsCampaignDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl mx-auto" data-full-ai-workspace="SmsCampaignDetailPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading || aiLoading)} />
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
           <div className="h-8 bg-gray-200 rounded w-1/3 mb-6" />
           <div className="space-y-4">
@@ -171,7 +175,7 @@ export default function SmsCampaignDetailPage() {
 
   if (error && !campaign) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700" data-full-ai-workspace="SmsCampaignDetailPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading || aiLoading)} />
         <p className="font-medium">Error</p>
         <p className="text-sm mt-1">{error}</p>
       </div>
@@ -181,7 +185,7 @@ export default function SmsCampaignDetailPage() {
   if (!campaign || !form) return null
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto" data-full-ai-workspace="SmsCampaignDetailPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading || aiLoading)} />
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">
           {error}
@@ -244,15 +248,15 @@ export default function SmsCampaignDetailPage() {
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Name</label>
-              <input type="text" name="name" value={form.name} onChange={handleChange} className={inputClass} />
+              <input type="text" name="name" value={form.name} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.name, change: handleChange, label: "form.name", manual: false, json: false }, "p1-8347", undefined)} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Audience</label>
-              <input type="text" name="audience" value={form.audience} onChange={handleChange} className={inputClass} />
+              <input type="text" name="audience" value={form.audience} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.audience, change: handleChange, label: "form.audience", manual: false, json: false }, "p1-8592", undefined)} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-              <select name="industry" value={form.industry} onChange={handleChange} className={inputClass}>
+              <select name="industry" value={form.industry} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.industry, change: handleChange, label: "form.industry", manual: false, json: false }, "p1-8845", undefined)}>
                 {INDUSTRIES.map((ind) => (
                   <option key={ind} value={ind}>{ind}</option>
                 ))}
@@ -270,11 +274,11 @@ export default function SmsCampaignDetailPage() {
                   {aiLoading ? 'Composing...' : 'Compose with AI'}
                 </button>
               </div>
-              <textarea name="messageTemplate" value={form.messageTemplate} onChange={handleChange} rows={4} className={inputClass} />
+              <textarea name="messageTemplate" value={form.messageTemplate} onChange={handleChange} rows={4} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.messageTemplate, change: handleChange, label: "form.messageTemplate", manual: false, json: false }, "p1-9696", undefined)} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled At</label>
-              <input type="datetime-local" name="scheduledAt" value={form.scheduledAt} onChange={handleChange} className={inputClass} />
+              <input type="datetime-local" name="scheduledAt" value={form.scheduledAt} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.scheduledAt, change: handleChange, label: "form.scheduledAt", manual: false, json: false }, "p1-9967", undefined)} />
             </div>
           </div>
         ) : (

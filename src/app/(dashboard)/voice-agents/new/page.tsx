@@ -1,4 +1,6 @@
 'use client'
+import FullAIExamples, { useFullAIExamples } from "../../../../components/FullAIExamples";
+
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -30,6 +32,8 @@ const inputClass =
   'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent'
 
 export default function NewVoiceAgentPage() {
+  const fullAIExamples = useFullAIExamples();
+
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -108,7 +112,7 @@ export default function NewVoiceAgentPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-5" data-full-ai-workspace="NewVoiceAgentPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(aiLoading)} />
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
           <input
@@ -118,14 +122,14 @@ export default function NewVoiceAgentPage() {
             onChange={handleChange}
             required
             className={inputClass}
-            placeholder="e.g. Front Desk Agent"
+            placeholder="e.g. Front Desk Agent" data-full-ai-field={fullAIExamples.bind({ current: form.name, change: handleChange, label: "form.name", manual: false, json: false, sample: '' }, "p1-3425", undefined)}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
-            <select name="language" value={form.language} onChange={handleChange} className={inputClass}>
+            <select name="language" value={form.language} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.language, change: handleChange, label: "form.language", manual: false, json: false, sample: 'English' }, "p1-3849", undefined)}>
               {LANGUAGES.map((lang) => (
                 <option key={lang} value={lang}>{lang}</option>
               ))}
@@ -133,7 +137,7 @@ export default function NewVoiceAgentPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Voice</label>
-            <select name="voice" value={form.voice} onChange={handleChange} className={inputClass}>
+            <select name="voice" value={form.voice} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.voice, change: handleChange, label: "form.voice", manual: false, json: false, sample: 'Male-1' }, "p1-4223", undefined)}>
               {VOICES.map((v) => (
                 <option key={v} value={v}>{v}</option>
               ))}
@@ -143,7 +147,7 @@ export default function NewVoiceAgentPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-          <select name="industry" value={form.industry} onChange={handleChange} className={inputClass}>
+          <select name="industry" value={form.industry} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.industry, change: handleChange, label: "form.industry", manual: false, json: false, sample: 'Dentistry' }, "p1-4589", undefined)}>
             {INDUSTRIES.map((ind) => (
               <option key={ind} value={ind}>{ind}</option>
             ))}
@@ -168,7 +172,7 @@ export default function NewVoiceAgentPage() {
             onChange={handleChange}
             rows={3}
             className={inputClass}
-            placeholder="Hello! Thank you for calling..."
+            placeholder="Hello! Thank you for calling..." data-full-ai-field={fullAIExamples.bind({ current: form.greeting, change: handleChange, label: "form.greeting", manual: false, json: false, sample: '' }, "p1-5375", undefined)}
           />
         </div>
 
@@ -184,7 +188,7 @@ export default function NewVoiceAgentPage() {
             onChange={handleChange}
             rows={4}
             className={inputClass}
-            placeholder="You are a helpful voice agent that..."
+            placeholder="You are a helpful voice agent that..." data-full-ai-field={fullAIExamples.bind({ current: form.systemPrompt, change: handleChange, label: "form.systemPrompt", manual: false, json: false, sample: '' }, "p1-5902", undefined)}
           />
         </div>
 
@@ -198,7 +202,7 @@ export default function NewVoiceAgentPage() {
               onChange={handleChange}
               min={30}
               max={3600}
-              className={inputClass}
+              className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.maxCallDuration, change: handleChange, label: "form.maxCallDuration", manual: false, json: false, sample: 300 }, "p1-6356", undefined)}
             />
           </div>
           <div>
@@ -209,7 +213,7 @@ export default function NewVoiceAgentPage() {
               value={form.transferNumber}
               onChange={handleChange}
               className={inputClass}
-              placeholder="+1 (555) 000-0000"
+              placeholder="+1 (555) 000-0000" data-full-ai-field={fullAIExamples.bind({ current: form.transferNumber, change: handleChange, label: "form.transferNumber", manual: false, json: false, sample: '' }, "p1-6754", undefined)}
             />
           </div>
         </div>

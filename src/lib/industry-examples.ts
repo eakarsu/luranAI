@@ -1,6 +1,5 @@
 // Per-industry example user prompts for the chat playground.
-// Clicking an example chip in the playground sends the message immediately
-// so demos can quickly walk through common flows for each industry.
+// Clicking an example chip fills the chat draft for review before sending.
 
 export interface IndustryExample {
   label: string  // short button label

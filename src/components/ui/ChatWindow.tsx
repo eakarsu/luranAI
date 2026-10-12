@@ -11,6 +11,8 @@ export interface ChatMessage {
 interface ChatWindowProps {
   messages: ChatMessage[]
   onSend: (text: string) => void | Promise<void>
+  draft?: string
+  onDraftChange?: (text: string) => void
   isSending?: boolean
   isDisabled?: boolean
   placeholder?: string
@@ -23,6 +25,8 @@ interface ChatWindowProps {
 export default function ChatWindow({
   messages,
   onSend,
+  draft,
+  onDraftChange,
   isSending = false,
   isDisabled = false,
   placeholder = 'Type your message…',
@@ -32,6 +36,8 @@ export default function ChatWindow({
   minHeight = '500px',
 }: ChatWindowProps) {
   const [input, setInput] = useState('')
+  const currentInput = draft ?? input
+  const updateInput = onDraftChange ?? setInput
   const endRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -40,9 +46,9 @@ export default function ChatWindow({
   }, [messages, isSending])
 
   const handleSend = async () => {
-    const text = input.trim()
+    const text = currentInput.trim()
     if (!text || isSending || isDisabled) return
-    setInput('')
+    updateInput('')
     await onSend(text)
     // Refocus for fast follow-ups
     setTimeout(() => inputRef.current?.focus(), 50)
@@ -115,8 +121,8 @@ export default function ChatWindow({
       <div className="p-3 flex items-end gap-2">
         <textarea
           ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
+          value={currentInput}
+          onChange={(e) => updateInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           rows={2}
@@ -125,7 +131,7 @@ export default function ChatWindow({
         />
         <button
           onClick={handleSend}
-          disabled={!input.trim() || isSending || isDisabled}
+          disabled={!currentInput.trim() || isSending || isDisabled}
           className="px-4 py-2 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           {isSending ? (

@@ -1,9 +1,13 @@
 'use client'
+import FullAIExamples, { useFullAIExamples } from "../../../components/FullAIExamples";
+
 
 import { useState } from 'react'
 import AIResponseDisplay from '@/components/ui/AIResponseDisplay'
 
 export default function AgentCoachingPage() {
+  const fullAIExamples = useFullAIExamples();
+
   const [transcript, setTranscript] = useState('')
   const [agentName, setAgentName] = useState('')
   const [response, setResponse] = useState<string | null>(null)
@@ -37,7 +41,7 @@ export default function AgentCoachingPage() {
   }
 
   return (
-    <div>
+    <div data-full-ai-workspace="AgentCoachingPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading)} />
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Agent Coaching</h1>
         <p className="text-sm text-gray-500 mt-1">Post-call coaching analysis for human agents</p>
@@ -54,7 +58,7 @@ export default function AgentCoachingPage() {
                   value={agentName}
                   onChange={(e) => setAgentName(e.target.value)}
                   className={inputClassName}
-                  placeholder="e.g., Jordan Smith"
+                  placeholder="e.g., Jordan Smith" data-full-ai-field={fullAIExamples.bind({ current: agentName, change: (e) => setAgentName(e.target.value), label: "agentName", manual: false, json: false, sample: '' }, "p1-2013", undefined)}
                 />
               </div>
 
@@ -65,7 +69,7 @@ export default function AgentCoachingPage() {
                   onChange={(e) => setTranscript(e.target.value)}
                   rows={12}
                   className={inputClassName}
-                  placeholder="Paste a full conversation transcript to receive strengths, improvement areas, and concrete coaching tips..."
+                  placeholder="Paste a full conversation transcript to receive strengths, improvement areas, and concrete coaching tips..." data-full-ai-field={fullAIExamples.bind({ current: transcript, change: (e) => setTranscript(e.target.value), label: "transcript", manual: false, json: false, sample: '' }, "p1-2438", undefined)}
                 />
               </div>
 

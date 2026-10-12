@@ -1,9 +1,13 @@
 'use client'
+import FullAIExamples, { useFullAIExamples } from "../../../components/FullAIExamples";
+
 
 import { useState } from 'react'
 import AIResponseDisplay from '@/components/ui/AIResponseDisplay'
 
 export default function HandoffSummaryPage() {
+  const fullAIExamples = useFullAIExamples();
+
   const [transcript, setTranscript] = useState('')
   const [channel, setChannel] = useState('voice')
   const [urgency, setUrgency] = useState('normal')
@@ -38,7 +42,7 @@ export default function HandoffSummaryPage() {
   }
 
   return (
-    <div>
+    <div data-full-ai-workspace="HandoffSummaryPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading)} />
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Handoff Summary</h1>
         <p className="text-sm text-gray-500 mt-1">Generate a concise handoff summary for a human agent takeover</p>
@@ -51,7 +55,7 @@ export default function HandoffSummaryPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Channel</label>
-                  <select value={channel} onChange={(e) => setChannel(e.target.value)} className={inputClassName}>
+                  <select value={channel} onChange={(e) => setChannel(e.target.value)} className={inputClassName} data-full-ai-field={fullAIExamples.bind({ current: channel, change: (e) => setChannel(e.target.value), label: "channel", manual: false, json: false, sample: 'voice' }, "p1-2099", undefined)}>
                     <option value="voice">Voice</option>
                     <option value="chat">Chat</option>
                     <option value="sms">SMS</option>
@@ -60,7 +64,7 @@ export default function HandoffSummaryPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Urgency</label>
-                  <select value={urgency} onChange={(e) => setUrgency(e.target.value)} className={inputClassName}>
+                  <select value={urgency} onChange={(e) => setUrgency(e.target.value)} className={inputClassName} data-full-ai-field={fullAIExamples.bind({ current: urgency, change: (e) => setUrgency(e.target.value), label: "urgency", manual: false, json: false, sample: 'normal' }, "p1-2607", undefined)}>
                     <option value="low">Low</option>
                     <option value="normal">Normal</option>
                     <option value="high">High</option>
@@ -76,7 +80,7 @@ export default function HandoffSummaryPage() {
                   onChange={(e) => setTranscript(e.target.value)}
                   rows={10}
                   className={inputClassName}
-                  placeholder="Paste the conversation transcript here..."
+                  placeholder="Paste the conversation transcript here..." data-full-ai-field={fullAIExamples.bind({ current: transcript, change: (e) => setTranscript(e.target.value), label: "transcript", manual: false, json: false, sample: '' }, "p1-3144", undefined)}
                 />
               </div>
 

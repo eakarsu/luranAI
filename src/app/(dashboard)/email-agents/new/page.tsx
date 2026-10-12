@@ -1,4 +1,6 @@
 'use client'
+import FullAIExamples, { useFullAIExamples } from "../../../../components/FullAIExamples";
+
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -18,6 +20,8 @@ const inputClass =
   'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent'
 
 export default function NewEmailAgentPage() {
+  const fullAIExamples = useFullAIExamples();
+
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -97,7 +101,7 @@ export default function NewEmailAgentPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-5" data-full-ai-workspace="NewEmailAgentPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(aiLoading)} />
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
           <input
@@ -107,7 +111,7 @@ export default function NewEmailAgentPage() {
             onChange={handleChange}
             required
             className={inputClass}
-            placeholder="e.g. Support Email Agent"
+            placeholder="e.g. Support Email Agent" data-full-ai-field={fullAIExamples.bind({ current: form.name, change: handleChange, label: "form.name", manual: false, json: false, sample: '' }, "p1-3106", undefined)}
           />
         </div>
 
@@ -120,13 +124,13 @@ export default function NewEmailAgentPage() {
             onChange={handleChange}
             required
             className={inputClass}
-            placeholder="e.g. support@company.com"
+            placeholder="e.g. support@company.com" data-full-ai-field={fullAIExamples.bind({ current: form.emailAddress, change: handleChange, label: "form.emailAddress", manual: false, json: false, sample: '' }, "p1-3483", undefined)}
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-          <select name="industry" value={form.industry} onChange={handleChange} className={inputClass}>
+          <select name="industry" value={form.industry} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.industry, change: handleChange, label: "form.industry", manual: false, json: false, sample: 'Dentistry' }, "p1-3872", undefined)}>
             {INDUSTRIES.map((ind) => (
               <option key={ind} value={ind}>{ind}</option>
             ))}
@@ -151,7 +155,7 @@ export default function NewEmailAgentPage() {
             onChange={handleChange}
             rows={4}
             className={inputClass}
-            placeholder="Best regards,&#10;Your Name&#10;Company Name"
+            placeholder="Best regards,&#10;Your Name&#10;Company Name" data-full-ai-field={fullAIExamples.bind({ current: form.signature, change: handleChange, label: "form.signature", manual: false, json: false, sample: '' }, "p1-4640", undefined)}
           />
         </div>
 
@@ -171,7 +175,7 @@ export default function NewEmailAgentPage() {
             min={0}
             max={1}
             step={0.1}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600" data-full-ai-field={fullAIExamples.bind({ current: form.confidenceThreshold, change: handleChange, label: "form.confidenceThreshold", manual: false, json: false, sample: 0.7 }, "p1-5258", undefined)}
           />
           <div className="flex justify-between text-xs text-gray-400 mt-1">
             <span>0%</span>

@@ -1,4 +1,6 @@
 'use client'
+import FullAIExamples, { useFullAIExamples } from "../../../../components/FullAIExamples";
+
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -18,6 +20,8 @@ const inputClass =
   'w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent'
 
 export default function NewSmsCampaignPage() {
+  const fullAIExamples = useFullAIExamples();
+
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -94,7 +98,7 @@ export default function NewSmsCampaignPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-5">
+      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-5" data-full-ai-workspace="NewSmsCampaignPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(aiLoading)} />
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Name</label>
           <input
@@ -104,7 +108,7 @@ export default function NewSmsCampaignPage() {
             onChange={handleChange}
             required
             className={inputClass}
-            placeholder="e.g. Spring Promotion"
+            placeholder="e.g. Spring Promotion" data-full-ai-field={fullAIExamples.bind({ current: form.name, change: handleChange, label: "form.name", manual: false, json: false, sample: '' }, "p1-2961", undefined)}
           />
         </div>
 
@@ -117,13 +121,13 @@ export default function NewSmsCampaignPage() {
             onChange={handleChange}
             required
             className={inputClass}
-            placeholder="e.g. All active customers"
+            placeholder="e.g. All active customers" data-full-ai-field={fullAIExamples.bind({ current: form.audience, change: handleChange, label: "form.audience", manual: false, json: false, sample: '' }, "p1-3330", undefined)}
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-          <select name="industry" value={form.industry} onChange={handleChange} className={inputClass}>
+          <select name="industry" value={form.industry} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.industry, change: handleChange, label: "form.industry", manual: false, json: false, sample: 'Dentistry' }, "p1-3711", undefined)}>
             {INDUSTRIES.map((ind) => (
               <option key={ind} value={ind}>{ind}</option>
             ))}
@@ -149,7 +153,7 @@ export default function NewSmsCampaignPage() {
             required
             rows={4}
             className={inputClass}
-            placeholder="Hi {name}, we wanted to let you know..."
+            placeholder="Hi {name}, we wanted to let you know..." data-full-ai-field={fullAIExamples.bind({ current: form.messageTemplate, change: handleChange, label: "form.messageTemplate", manual: false, json: false, sample: '' }, "p1-4491", undefined)}
           />
         </div>
 
@@ -164,7 +168,7 @@ export default function NewSmsCampaignPage() {
             name="scheduledAt"
             value={form.scheduledAt}
             onChange={handleChange}
-            className={inputClass}
+            className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.scheduledAt, change: handleChange, label: "form.scheduledAt", manual: false, json: false, sample: '' }, "p1-5058", undefined)}
           />
         </div>
 

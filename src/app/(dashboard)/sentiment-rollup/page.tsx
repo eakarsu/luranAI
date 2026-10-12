@@ -1,4 +1,6 @@
 'use client'
+import FullAIExamples, { useFullAIExamples } from "../../../components/FullAIExamples";
+
 
 import { useState } from 'react'
 import AIResponseDisplay from '@/components/ui/AIResponseDisplay'
@@ -10,6 +12,8 @@ const DEFAULT_ROWS = JSON.stringify([
 ], null, 2)
 
 export default function SentimentRollupPage() {
+  const fullAIExamples = useFullAIExamples();
+
   const [contactLabel, setContactLabel] = useState('')
   const [perChannel, setPerChannel] = useState(DEFAULT_ROWS)
   const [response, setResponse] = useState<string | null>(null)
@@ -60,7 +64,7 @@ export default function SentimentRollupPage() {
   }
 
   return (
-    <div>
+    <div data-full-ai-workspace="SentimentRollupPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading)} />
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Cross-Channel Sentiment Rollup</h1>
         <p className="text-sm text-gray-500 mt-1">Aggregate per-channel sentiment samples for one contact into a single trend snapshot</p>
@@ -76,7 +80,7 @@ export default function SentimentRollupPage() {
                   value={contactLabel}
                   onChange={(e) => setContactLabel(e.target.value)}
                   placeholder="e.g. Acme Corp, Jane Doe"
-                  className={inputClassName}
+                  className={inputClassName} data-full-ai-field={fullAIExamples.bind({ current: contactLabel, change: (e) => setContactLabel(e.target.value), label: "contactLabel", manual: false, json: false, sample: '' }, "p1-2862", undefined)}
                 />
               </div>
 
@@ -86,7 +90,7 @@ export default function SentimentRollupPage() {
                   value={perChannel}
                   onChange={(e) => setPerChannel(e.target.value)}
                   rows={12}
-                  className={inputClassName + ' font-mono text-sm'}
+                  className={inputClassName + ' font-mono text-sm'} data-full-ai-field={fullAIExamples.bind({ current: perChannel, change: (e) => setPerChannel(e.target.value), label: "perChannel", manual: false, json: false, sample: DEFAULT_ROWS }, "p1-3282", undefined)}
                 />
               </div>
 

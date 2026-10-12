@@ -8,7 +8,7 @@ interface HistoryItem {
   prompt: string
   context: string
   aiFunction: string
-  response: string
+  response: unknown
   timestamp: Date
 }
 
@@ -155,7 +155,7 @@ export default function AIPlaygroundPage() {
   const [prompt, setPrompt] = useState('')
   const [context, setContext] = useState('')
   const [selectedFunction, setSelectedFunction] = useState('general')
-  const [response, setResponse] = useState<string | null>(null)
+  const [response, setResponse] = useState<unknown>(null)
   const [loading, setLoading] = useState(false)
   const [history, setHistory] = useState<HistoryItem[]>([])
 
@@ -207,7 +207,7 @@ export default function AIPlaygroundPage() {
       if (!res.ok) throw new Error('Failed to generate response')
 
       const data = await res.json()
-      const result = data.result || data.response || data.content || JSON.stringify(data)
+      const result = data.result ?? data.response ?? data.content ?? data
 
       setResponse(result)
 
@@ -385,7 +385,7 @@ export default function AIPlaygroundPage() {
                     </div>
                     <p className="text-sm text-gray-700 line-clamp-2">{item.prompt}</p>
                     <p className="text-xs text-gray-400 mt-1 line-clamp-1">
-                      {item.response.slice(0, 80)}...
+                      {typeof item.response === 'string' ? `${item.response.slice(0, 80)}...` : 'Structured AI response · Open to view'}
                     </p>
                   </button>
                 ))}

@@ -1,9 +1,13 @@
 'use client'
+import FullAIExamples, { useFullAIExamples } from "../../../components/FullAIExamples";
+
 
 import { useState } from 'react'
 import AIResponseDisplay from '@/components/ui/AIResponseDisplay'
 
 export default function ProactiveOutreachPage() {
+  const fullAIExamples = useFullAIExamples();
+
   const [contactProfile, setContactProfile] = useState('')
   const [recentInteractions, setRecentInteractions] = useState('')
   const [businessGoal, setBusinessGoal] = useState('retention and timely upsell')
@@ -46,7 +50,7 @@ export default function ProactiveOutreachPage() {
   }
 
   return (
-    <div>
+    <div data-full-ai-workspace="ProactiveOutreachPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading)} />
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Predictive Proactive Outreach</h1>
         <p className="text-sm text-gray-500 mt-1">Decide whether to reach out, on which channel, and what to say — before the customer has to ask</p>
@@ -61,7 +65,7 @@ export default function ProactiveOutreachPage() {
                 <input
                   value={businessGoal}
                   onChange={(e) => setBusinessGoal(e.target.value)}
-                  className={inputClassName}
+                  className={inputClassName} data-full-ai-field={fullAIExamples.bind({ current: businessGoal, change: (e) => setBusinessGoal(e.target.value), label: "businessGoal", manual: false, json: false, sample: 'retention and timely upsell' }, "p1-2516", undefined)}
                 />
               </div>
 
@@ -72,7 +76,7 @@ export default function ProactiveOutreachPage() {
                   onChange={(e) => setContactProfile(e.target.value)}
                   rows={6}
                   className={inputClassName}
-                  placeholder="Plan, tenure, role, region, current health score, recent NPS..."
+                  placeholder="Plan, tenure, role, region, current health score, recent NPS..." data-full-ai-field={fullAIExamples.bind({ current: contactProfile, change: (e) => setContactProfile(e.target.value), label: "contactProfile", manual: false, json: false, sample: '' }, "p1-2858", undefined)}
                 />
               </div>
 
@@ -83,7 +87,7 @@ export default function ProactiveOutreachPage() {
                   onChange={(e) => setRecentInteractions(e.target.value)}
                   rows={8}
                   className={inputClassName}
-                  placeholder="Last 30 days: support tickets, calls, chats, churn signals, expansion signals..."
+                  placeholder="Last 30 days: support tickets, calls, chats, churn signals, expansion signals..." data-full-ai-field={fullAIExamples.bind({ current: recentInteractions, change: (e) => setRecentInteractions(e.target.value), label: "recentInteractions", manual: false, json: false, sample: '' }, "p1-3334", undefined)}
                 />
               </div>
 

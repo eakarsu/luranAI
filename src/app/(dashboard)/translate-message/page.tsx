@@ -1,9 +1,13 @@
 'use client'
+import FullAIExamples, { useFullAIExamples } from "../../../components/FullAIExamples";
+
 
 import { useState } from 'react'
 import AIResponseDisplay from '@/components/ui/AIResponseDisplay'
 
 export default function TranslateMessagePage() {
+  const fullAIExamples = useFullAIExamples();
+
   const [text, setText] = useState('')
   const [targetLanguage, setTargetLanguage] = useState('Spanish')
   const [sourceLanguage, setSourceLanguage] = useState('')
@@ -48,7 +52,7 @@ export default function TranslateMessagePage() {
   }
 
   return (
-    <div>
+    <div data-full-ai-workspace="TranslateMessagePage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading)} />
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Translate Message</h1>
         <p className="text-sm text-gray-500 mt-1">Translate customer-communication messages while preserving tone and channel norms</p>
@@ -65,7 +69,7 @@ export default function TranslateMessagePage() {
                     value={sourceLanguage}
                     onChange={(e) => setSourceLanguage(e.target.value)}
                     placeholder="auto-detect"
-                    className={inputClassName}
+                    className={inputClassName} data-full-ai-field={fullAIExamples.bind({ current: sourceLanguage, change: (e) => setSourceLanguage(e.target.value), label: "sourceLanguage", manual: false, json: false, sample: '' }, "p1-2515", undefined)}
                   />
                 </div>
                 <div>
@@ -74,12 +78,12 @@ export default function TranslateMessagePage() {
                     value={targetLanguage}
                     onChange={(e) => setTargetLanguage(e.target.value)}
                     placeholder="e.g. Spanish, French, Japanese"
-                    className={inputClassName}
+                    className={inputClassName} data-full-ai-field={fullAIExamples.bind({ current: targetLanguage, change: (e) => setTargetLanguage(e.target.value), label: "targetLanguage", manual: false, json: false, sample: 'Spanish' }, "p1-2922", undefined)}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Channel</label>
-                  <select value={channel} onChange={(e) => setChannel(e.target.value)} className={inputClassName}>
+                  <select value={channel} onChange={(e) => setChannel(e.target.value)} className={inputClassName} data-full-ai-field={fullAIExamples.bind({ current: channel, change: (e) => setChannel(e.target.value), label: "channel", manual: false, json: false, sample: 'chat' }, "p1-3338", undefined)}>
                     <option value="voice">Voice</option>
                     <option value="chat">Chat</option>
                     <option value="sms">SMS</option>
@@ -95,7 +99,7 @@ export default function TranslateMessagePage() {
                   onChange={(e) => setText(e.target.value)}
                   rows={8}
                   className={inputClassName}
-                  placeholder="Paste the message to translate..."
+                  placeholder="Paste the message to translate..." data-full-ai-field={fullAIExamples.bind({ current: text, change: (e) => setText(e.target.value), label: "text", manual: false, json: false, sample: '' }, "p1-3864", undefined)}
                 />
               </div>
 

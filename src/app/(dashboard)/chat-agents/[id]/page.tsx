@@ -1,4 +1,6 @@
 'use client'
+import FullAIExamples, { useFullAIExamples } from "../../../../components/FullAIExamples";
+
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
@@ -33,6 +35,8 @@ interface ChatAgent {
 }
 
 export default function ChatAgentDetailPage() {
+  const fullAIExamples = useFullAIExamples();
+
   const router = useRouter()
   const params = useParams()
   const id = params.id as string
@@ -143,7 +147,7 @@ export default function ChatAgentDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl mx-auto" data-full-ai-workspace="ChatAgentDetailPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading || aiLoading)} />
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
           <div className="h-8 bg-gray-200 rounded w-1/3 mb-6" />
           <div className="space-y-4">
@@ -158,7 +162,7 @@ export default function ChatAgentDetailPage() {
 
   if (error && !agent) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700" data-full-ai-workspace="ChatAgentDetailPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading || aiLoading)} />
         <p className="font-medium">Error</p>
         <p className="text-sm mt-1">{error}</p>
       </div>
@@ -168,7 +172,7 @@ export default function ChatAgentDetailPage() {
   if (!agent || !form) return null
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto" data-full-ai-workspace="ChatAgentDetailPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading || aiLoading)} />
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">
           {error}
@@ -224,20 +228,20 @@ export default function ChatAgentDetailPage() {
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <input type="text" name="name" value={form.name} onChange={handleChange} className={inputClass} />
+              <input type="text" name="name" value={form.name} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.name, change: handleChange, label: "form.name", manual: false, json: false }, "p1-7140", undefined)} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Welcome Message</label>
-              <textarea name="welcomeMessage" value={form.welcomeMessage} onChange={handleChange} rows={3} className={inputClass} />
+              <textarea name="welcomeMessage" value={form.welcomeMessage} onChange={handleChange} rows={3} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.welcomeMessage, change: handleChange, label: "form.welcomeMessage", manual: false, json: false }, "p1-7392", undefined)} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Personality</label>
-              <input type="text" name="personality" value={form.personality} onChange={handleChange} className={inputClass} />
+              <input type="text" name="personality" value={form.personality} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.personality, change: handleChange, label: "form.personality", manual: false, json: false }, "p1-7660", undefined)} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-                <select name="industry" value={form.industry} onChange={handleChange} className={inputClass}>
+                <select name="industry" value={form.industry} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.industry, change: handleChange, label: "form.industry", manual: false, json: false }, "p1-7978", undefined)}>
                   {INDUSTRIES.map((ind) => (
                     <option key={ind} value={ind}>{ind}</option>
                   ))}
@@ -245,7 +249,7 @@ export default function ChatAgentDetailPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Response Time</label>
-                <input type="text" name="responseTime" value={form.responseTime} onChange={handleChange} className={inputClass} />
+                <input type="text" name="responseTime" value={form.responseTime} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.responseTime, change: handleChange, label: "form.responseTime", manual: false, json: false }, "p1-8389", undefined)} />
               </div>
             </div>
             <div>
@@ -264,7 +268,7 @@ export default function ChatAgentDetailPage() {
                       type="checkbox"
                       checked={form.channels.includes(channel)}
                       onChange={() => handleChannelToggle(channel)}
-                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                      className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" data-full-ai-field={fullAIExamples.bind({ current: form.channels.includes(channel), change: () => handleChannelToggle(channel), label: "form.channels.includes(channel)", manual: false, json: false }, "p1-9170", [(typeof channel === 'object' ? (channel as any)?.key ?? (channel as any)?.name ?? (channel as any)?.id ?? '' : channel)].join(":"))}
                     />
                     <span className="text-sm font-medium text-gray-700">{channel}</span>
                   </label>
@@ -318,7 +322,7 @@ export default function ChatAgentDetailPage() {
             onChange={(e) => setTestInput(e.target.value)}
             placeholder="Type a message to test the chat agent..."
             className={`flex-1 ${inputClass}`}
-            onKeyDown={(e) => e.key === 'Enter' && handleTestChat()}
+            onKeyDown={(e) => e.key === 'Enter' && handleTestChat()} data-full-ai-field={fullAIExamples.bind({ current: testInput, change: (e) => setTestInput(e.target.value), label: "testInput", manual: false, json: false, sample: '' }, "p1-11519", undefined)}
           />
           <button
             onClick={handleTestChat}

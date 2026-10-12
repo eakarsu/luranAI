@@ -47,6 +47,7 @@ export default function ChatPlaygroundPage() {
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [personality, setPersonality] = useState('Professional, helpful, and friendly')
+  const [messageDraft, setMessageDraft] = useState('')
 
   // Workflow state
   const [workflow, setWorkflow] = useState<WorkflowSummary | null>(null)
@@ -79,8 +80,9 @@ export default function ChatPlaygroundPage() {
     const targetSlug = workflowIndustrySlug(industry.id)
     fetch('/api/workflows')
       .then(r => (r.ok ? r.json() : []))
-      .then((all: WorkflowSummary[]) => {
-        const match = (all || []).find(
+      .then((payload: unknown) => {
+        const all = Array.isArray(payload) ? payload : (payload && typeof payload === 'object' && 'data' in payload && Array.isArray(payload.data) ? payload.data : []) as WorkflowSummary[]
+        const match = all.find(
           w => w.industry === targetSlug && w.status === 'active'
         )
         setWorkflow(match || null)
@@ -168,6 +170,7 @@ export default function ChatPlaygroundPage() {
   }
 
   const handleReset = () => {
+    setMessageDraft('')
     setMessages([
       {
         role: 'assistant',
@@ -377,14 +380,15 @@ export default function ChatPlaygroundPage() {
                   Try an example
                 </span>
                 <span className="text-xs text-gray-400">
-                  Click to send instantly
+                  Fill the draft, then choose Send
                 </span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {examples.map((ex, i) => (
                   <button
                     key={i}
-                    onClick={() => handleSend(ex.message)}
+                    type="button"
+                    onClick={() => { setMessageDraft(ex.message); setPersonality('Professional, helpful, and friendly') }}
                     disabled={isSending || isComplete}
                     title={ex.message}
                     className="text-xs px-2.5 py-1.5 rounded-full border border-gray-300 bg-gray-50 text-gray-700 hover:bg-primary-50 hover:border-primary-300 hover:text-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -400,6 +404,8 @@ export default function ChatPlaygroundPage() {
           <ChatWindow
             messages={messages}
             onSend={handleSend}
+            draft={messageDraft}
+            onDraftChange={setMessageDraft}
             isSending={isSending}
             isDisabled={isComplete}
             placeholder={isComplete ? 'Conversation ended. Reset to start a new one.' : 'Type a question — try scheduling, pricing, or an emergency scenario…'}

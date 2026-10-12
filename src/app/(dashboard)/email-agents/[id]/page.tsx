@@ -1,4 +1,6 @@
 'use client'
+import FullAIExamples, { useFullAIExamples } from "../../../../components/FullAIExamples";
+
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
@@ -30,6 +32,8 @@ interface EmailAgent {
 }
 
 export default function EmailAgentDetailPage() {
+  const fullAIExamples = useFullAIExamples();
+
   const router = useRouter()
   const params = useParams()
   const id = params.id as string
@@ -133,7 +137,7 @@ export default function EmailAgentDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-3xl mx-auto" data-full-ai-workspace="EmailAgentDetailPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading || aiLoading)} />
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-pulse">
           <div className="h-8 bg-gray-200 rounded w-1/3 mb-6" />
           <div className="space-y-4">
@@ -148,7 +152,7 @@ export default function EmailAgentDetailPage() {
 
   if (error && !agent) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700" data-full-ai-workspace="EmailAgentDetailPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading || aiLoading)} />
         <p className="font-medium">Error</p>
         <p className="text-sm mt-1">{error}</p>
       </div>
@@ -158,7 +162,7 @@ export default function EmailAgentDetailPage() {
   if (!agent || !form) return null
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto" data-full-ai-workspace="EmailAgentDetailPage"><FullAIExamples controller={fullAIExamples} disabled={Boolean(loading || aiLoading)} />
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">
           {error}
@@ -214,15 +218,15 @@ export default function EmailAgentDetailPage() {
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <input type="text" name="name" value={form.name} onChange={handleChange} className={inputClass} />
+              <input type="text" name="name" value={form.name} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.name, change: handleChange, label: "form.name", manual: false, json: false }, "p1-6889", undefined)} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-              <input type="email" name="emailAddress" value={form.emailAddress} onChange={handleChange} className={inputClass} />
+              <input type="email" name="emailAddress" value={form.emailAddress} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.emailAddress, change: handleChange, label: "form.emailAddress", manual: false, json: false }, "p1-7139", undefined)} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
-              <select name="industry" value={form.industry} onChange={handleChange} className={inputClass}>
+              <select name="industry" value={form.industry} onChange={handleChange} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.industry, change: handleChange, label: "form.industry", manual: false, json: false }, "p1-7401", undefined)}>
                 {INDUSTRIES.map((ind) => (
                   <option key={ind} value={ind}>{ind}</option>
                 ))}
@@ -230,7 +234,7 @@ export default function EmailAgentDetailPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Signature</label>
-              <textarea name="signature" value={form.signature} onChange={handleChange} rows={4} className={inputClass} />
+              <textarea name="signature" value={form.signature} onChange={handleChange} rows={4} className={inputClass} data-full-ai-field={fullAIExamples.bind({ current: form.signature, change: handleChange, label: "form.signature", manual: false, json: false }, "p1-7792", undefined)} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -244,7 +248,7 @@ export default function EmailAgentDetailPage() {
                 min={0}
                 max={1}
                 step={0.1}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600" data-full-ai-field={fullAIExamples.bind({ current: form.confidenceThreshold, change: handleChange, label: "form.confidenceThreshold", manual: false, json: false }, "p1-8139", undefined)}
               />
               <div className="flex justify-between text-xs text-gray-400 mt-1">
                 <span>0%</span>
@@ -295,7 +299,7 @@ export default function EmailAgentDetailPage() {
             onChange={(e) => setDraftPrompt(e.target.value)}
             placeholder="Describe the email you want to draft..."
             className={`flex-1 ${inputClass}`}
-            onKeyDown={(e) => e.key === 'Enter' && handleGenerateDraft()}
+            onKeyDown={(e) => e.key === 'Enter' && handleGenerateDraft()} data-full-ai-field={fullAIExamples.bind({ current: draftPrompt, change: (e) => setDraftPrompt(e.target.value), label: "draftPrompt", manual: false, json: false, sample: '' }, "p1-10417", undefined)}
           />
           <button
             onClick={handleGenerateDraft}
